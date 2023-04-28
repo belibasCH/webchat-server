@@ -1,0 +1,59 @@
+name:                fprod-webchat-server2
+version:             0.1.0.0
+git:                 "https://gitlab.fhnw.ch/fprod-webchat/server"
+license:             BSD3
+author:              "Daniel von Atzigen"
+maintainer:          "daniel.vonatzigen@students.fhnw.ch"
+copyright:           "2023 Daniel von Atzigen"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitLab at https://gitlab.fhnw.ch/fprod-webchat/server/-/blob/dev/README.md
+
+dependencies:
+- base >= 4.7 && < 5
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  fprod-webchat-server2-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - fprod-webchat-server2
+
+tests:
+  fprod-webchat-server2-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - fprod-webchat-server2
