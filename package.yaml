@@ -1,4 +1,4 @@
-name:                fprod-webchat-server2
+name:                fprod-webchat-server
 version:             0.1.0.0
 git:                 "https://gitlab.fhnw.ch/fprod-webchat/server"
 license:             BSD3
@@ -21,6 +21,9 @@ description:         Please see the README on GitLab at https://gitlab.fhnw.ch/f
 
 dependencies:
 - base >= 4.7 && < 5
+- websockets >= 0.12.7 && < 1
+- text >= 1.2.4 && < 2
+- aeson >= 2.0.3 && < 3
 
 ghc-options:
 - -Wall
@@ -37,7 +40,7 @@ library:
   source-dirs: src
 
 executables:
-  fprod-webchat-server2-exe:
+  fprod-webchat-server-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -45,10 +48,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - fprod-webchat-server2
+    - fprod-webchat-server
 
 tests:
-  fprod-webchat-server2-test:
+  fprod-webchat-server-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -56,4 +59,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - fprod-webchat-server2
+    - fprod-webchat-server

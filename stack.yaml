@@ -43,7 +43,7 @@ packages:
 # extra-deps: []
 
 # Override default flag values for local packages and extra-deps
-# flags: {}
+flags: {}
 
 # Extra package databases containing global packages
 # extra-package-dbs: []
@@ -65,3 +65,6 @@ packages:
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor
+
+ghc-options:
+  "$locals": "-Wall -Wno-name-shadowing"

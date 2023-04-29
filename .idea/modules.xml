@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/fprod-webchat-server.iml" filepath="$PROJECT_DIR$/.idea/fprod-webchat-server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/fprod-webchat-server.iml" filepath="$PROJECT_DIR$/fprod-webchat-server.iml" />
     </modules>
   </component>
 </project>

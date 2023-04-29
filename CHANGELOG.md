@@ -1,4 +1,4 @@
-# Changelog for `fprod-webchat-server2`
+# Changelog for `fprod-webchat-server`
 
 All notable changes to this project will be documented in this file.
 
