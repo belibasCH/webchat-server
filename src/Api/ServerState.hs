@@ -3,6 +3,7 @@ module Api.ServerState
   , new
   , addClient
   , removeClient
+  , addUser
   , findUserByName
   ) where
 
@@ -34,6 +35,9 @@ new = ServerState
 
 addClient :: Client -> ServerState -> ServerState
 addClient c s = s { clients = Map.insert (Client.id c) c (clients s) }
+
+addUser :: User -> ServerState -> ServerState
+addUser u s = s { users = Map.insert (User.id u) u (users s) }
 
 removeClient :: Id Client -> ServerState -> ServerState
 removeClient cId s = s { clients = Map.delete cId (clients s) }

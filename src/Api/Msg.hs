@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Api.Msg
@@ -11,7 +10,8 @@ import Data.Aeson (FromJSON, (.:))
 import qualified Data.Aeson as Json
 import qualified Data.Aeson.Types as Json
 import Data.Text.Encoding as TE
-import Api.Update (Result (..), Error (..))
+
+import Result
 
 data Msg
   = Login Text Text
@@ -25,7 +25,7 @@ instance FromJSON Msg where
     case msgType of
       "login" -> Login <$> o .: "username" <*> o .: "password"
       "send" -> Send <$> o .: "text"
-      "create_account" -> CreateUser <$> o .: "username" <*> o .: "password"
+      "create_user" -> CreateUser <$> o .: "username" <*> o .: "password"
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")
 
 parseMsgFromJson :: Text -> Result Msg

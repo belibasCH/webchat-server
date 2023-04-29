@@ -24,8 +24,10 @@ import qualified Api.Client as Client
 import Api.ServerState (ServerState)
 import qualified Api.ServerState as ServerState
 
+import Result
 import Api.Msg
 import Api.Update
+import Api.Utils
 
 run :: IO ()
 run = do
@@ -37,41 +39,54 @@ run = do
 application :: MVar ServerState -> WS.ServerApp
 application state pending = do
   conn <- WS.acceptRequest pending
-  WS.withPingThread conn 30 (return ()) $ sendFailure conn $ handleRequest conn state
+  WS.withPingThread conn 30 (return ()) $ unwrap conn $ handleRequest conn state
 
 
 handleRequest :: WS.Connection -> MVar ServerState -> ResultT IO ()
-handleRequest conn state = do
+handleRequest conn s = do
   msg <- wrap $ WS.receiveData conn
   msg <- wrap $ parseMsgFromJson msg
-  client <- case msg of
-    Login u p -> login conn state (u, p)
+  case msg of
+    Login n p -> respondWithLogin n p
+    CreateUser n p -> do
+      createUser conn s (n, p)
+      handleRequest conn s
     _ -> wrap $ Failure (BadRequest "unexpected message type")
-  let talk' = talk client state
-  let disconnect' = disconnect client state
-  talk' `finally` disconnect'
+  where
+    respondWithLogin :: Text -> Text -> ResultT IO ()
+    respondWithLogin n p =  do
+      c <- login conn s (n, p)
+      Client.send (LoginSucceeded n) c
+      let talk' = talk c s
+      let disconnect' = disconnect c s
+      talk' `finally` disconnect'
 
 disconnect :: Client -> MVar ServerState -> ResultT IO ()
 disconnect c s = do
   wrap $ modifyMVar_ s $ return . ServerState.removeClient (Client.id c)
   return ()
 
-talk :: Client -> MVar ServerState -> ResultT IO ()
-talk c s = forever $ wrap . sendFailure (Client.conn c) $ do
-  msg <- wrap $ WS.receiveData (Client.conn c)
-  msg <- wrap $ parseMsgFromJson msg
-  case msg of
-    Login _ _ -> wrap . Failure $ BadRequest "already logged in"
-    CreateUser u p -> error "nyi" -- wrap . modifyMVar_ state $ \s -> createUser User {  }
-    Send text -> wrap $ print ("sending '" <> text <> "'")
-
-
-sendFailure :: WS.Connection -> ResultT IO () -> IO ()
-sendFailure conn m = do
+unwrap :: WS.Connection -> ResultT IO () -> IO ()
+unwrap conn m = do
   r <- runResultT m
   case r of
     Success () -> pure ()
     Failure e -> WS.sendTextData conn $ toJson e
+
+talk :: Client -> MVar ServerState -> ResultT IO ()
+talk c s = forever $ wrap . unwrap (Client.conn c) $ do
+  msg <- wrap $ WS.receiveData (Client.conn c)
+  msg <- wrap $ parseMsgFromJson msg
+  case msg of
+    Login _ _ -> wrap . Failure $ BadRequest "already logged in"
+    CreateUser n p -> createUser (Client.conn c) s (n, p)
+    Send text -> wrap $ print ("sending '" <> text <> "'")
+
+createUser :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO ()
+createUser conn s (n, p) = do
+  u <- wrap $ User.make n p
+  wrap $ modifyMVar_ s (pure . ServerState.addUser u)
+  send (UserCreated u) conn
 
 login :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO Client
 login conn s (n, p) = do

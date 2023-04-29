@@ -28,8 +28,10 @@ library
       Api.Msg
       Api.ServerState
       Api.Update
+      Api.Utils
       Data.Id
       Data.User
+      Result
   other-modules:
       Paths_fprod_webchat_server
   hs-source-dirs:

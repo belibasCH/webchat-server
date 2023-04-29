@@ -4,9 +4,11 @@ module Api.Client
   , Api.Client.id
   , userId
   , conn
+  , send
   ) where
 
 import Data.Functor ((<&>))
+import Data.Aeson (ToJSON)
   
 import qualified Network.WebSockets as WS
 
@@ -16,6 +18,11 @@ import qualified Data.Id as Id
 import Data.User (User)
 import qualified Data.User
 
+import Api.Msg
+import Api.Update
+import Result
+import Api.Utils (toJson)
+
 data Client = Client
   { id :: Id Client
   , userId :: Id User
@@ -23,5 +30,8 @@ data Client = Client
   }
 
 make :: Id User -> WS.Connection -> IO Client
-make uId c = Id.make <&> \cId -> Client
+make uId c = Id.new <&> \cId -> Client
   { Api.Client.id = cId, userId = uId, conn = c }
+
+send :: ToJSON a => a -> Client -> ResultT IO ()
+send a c = wrap . WS.sendTextData (conn c) $ toJson a

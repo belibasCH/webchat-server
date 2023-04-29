@@ -7,20 +7,20 @@ module Data.User
 
 import Data.Id (Id)
 import qualified Data.Id as Id
-  
+
 import Data.Text (Text)
 
 data User = User
   { id :: Id User
   , name :: Text
   , password :: Text
-  }
+  } deriving (Show)
 
-new :: Text -> Text -> IO User
-new n p = (\i -> make i n p) <$> Id.make
+new :: Id User -> Text -> Text -> User
+new i n p = User { Data.User.id = i, name = n, password = p }
 
-make :: Id User -> Text -> Text -> User
-make i n p = User { Data.User.id = i, name = n, password = p }
+make :: Text -> Text -> IO User
+make n p = (\i -> new i n p) <$> Id.new
 
 isPassword :: Text -> User -> Bool
 isPassword t u = t == password u
