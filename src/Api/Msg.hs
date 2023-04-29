@@ -15,6 +15,7 @@ import Api.Update (Result (..), Error (..))
 
 data Msg
   = Login Text Text
+  | CreateUser Text Text
   | Send Text
   deriving (Show)
 
@@ -24,6 +25,7 @@ instance FromJSON Msg where
     case msgType of
       "login" -> Login <$> o .: "username" <*> o .: "password"
       "send" -> Send <$> o .: "text"
+      "create_account" -> CreateUser <$> o .: "username" <*> o .: "password"
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")
 
 parseMsgFromJson :: Text -> Result Msg

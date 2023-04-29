@@ -3,10 +3,26 @@
 module Api (run) where
 
 import Data.Text (Text)
-import qualified Network.WebSockets as WS
-import Control.Concurrent (MVar, newMVar, modifyMVar_)
+import Control.Concurrent (MVar, newMVar, readMVar, modifyMVar_, modifyMVar)
 import Control.Monad (forever)
-import Debug.Trace (traceShow, trace)
+import Data.Functor ((<&>))
+
+import qualified Network.WebSockets as WS
+
+import Data.User (User)
+import qualified Data.User
+
+import Data.Id (Id)
+import qualified Data.Id as Id
+
+import Data.User (User)
+import qualified Data.User as User
+
+import Api.Client (Client)
+import qualified Api.Client as Client
+
+import Api.ServerState (ServerState)
+import qualified Api.ServerState as ServerState
 
 import Api.Msg
 import Api.Update
@@ -14,7 +30,7 @@ import Api.Update
 run :: IO ()
 run = do
   print ("run server" :: Text)
-  state <- newMVar newServerState
+  state <- newMVar ServerState.new
   let opts = WS.defaultServerOptions
   WS.runServerWithOptions opts $ application state
 
@@ -22,7 +38,7 @@ application :: MVar ServerState -> WS.ServerApp
 application state pending = do
   conn <- WS.acceptRequest pending
   WS.withPingThread conn 30 (return ()) $ sendFailure conn $ handleRequest conn state
-    
+
 
 handleRequest :: WS.Connection -> MVar ServerState -> ResultT IO ()
 handleRequest conn state = do
@@ -36,19 +52,20 @@ handleRequest conn state = do
   talk' `finally` disconnect'
 
 disconnect :: Client -> MVar ServerState -> ResultT IO ()
-disconnect client state = do
-  wrap $ modifyMVar_ state $ return . removeClient client
+disconnect c s = do
+  wrap $ modifyMVar_ s $ return . ServerState.removeClient (Client.id c)
   return ()
 
 talk :: Client -> MVar ServerState -> ResultT IO ()
-talk client state = forever $ wrap . sendFailure (conn client) $ do
-  msg <- wrap $ WS.receiveData (conn client)
+talk c s = forever $ wrap . sendFailure (Client.conn c) $ do
+  msg <- wrap $ WS.receiveData (Client.conn c)
   msg <- wrap $ parseMsgFromJson msg
   case msg of
     Login _ _ -> wrap . Failure $ BadRequest "already logged in"
+    CreateUser u p -> error "nyi" -- wrap . modifyMVar_ state $ \s -> createUser User {  }
     Send text -> wrap $ print ("sending '" <> text <> "'")
-   
-   
+
+
 sendFailure :: WS.Connection -> ResultT IO () -> IO ()
 sendFailure conn m = do
   r <- runResultT m
@@ -57,37 +74,18 @@ sendFailure conn m = do
     Failure e -> WS.sendTextData conn $ toJson e
 
 login :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO Client
-login conn state (u, p) = if u == "Username" && p == "Password"
-  then do
-    let client = Client { conn = conn, name = u }
-    wrap $ modifyMVar_ state (pure . addClient client)
-    wrap . WS.sendTextData conn $ toJson . LoginSucceeded $ u
-    pure client
-  else wrap . Failure . LoginFailed $ u
+login conn s (n, p) = do
+  s' <- wrap $ readMVar s
+  case ServerState.findUserByName n s' of
+    Nothing -> wrap . Failure $ LoginFailed n
+    Just u -> if User.isPassword p u
+      then wrap $ modifyMVar s (\s -> Client.make (User.id u) conn <&> \c -> (ServerState.addClient c s, c))
+      else wrap . Failure $ LoginFailed n
 
--- A single client's connection.
-data Client = Client
-  { conn :: WS.Connection
-  , name :: Text
-  }
-
--- The in-memory server state.
-newtype ServerState = ServerState
-  { clients :: [Client]
-  }
-
-newServerState :: ServerState
-newServerState = ServerState
-  { clients = []
-  }
-
-addClient :: Client -> ServerState -> ServerState
-addClient client state = state
-  { clients = client : clients state
-  }
-
-removeClient :: Client -> ServerState -> ServerState
-removeClient client state = state
-  { clients = filter (\c -> name c /= name client) (clients state)
-  }
-
+--  if u == "Username" && p == "Password"
+--    then do
+--      let client = Client { conn = conn, name = u }
+--      wrap $ modifyMVar_ state (pure . addClient client)
+--      wrap . WS.sendTextData conn $ toJson . LoginSucceeded $ u
+--      pure client
+--    else wrap . Failure . LoginFailed $ u

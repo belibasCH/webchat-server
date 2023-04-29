@@ -30,6 +30,7 @@ instance ToJSON Update where
 data Error
   = BadRequest Text
   | LoginFailed Text
+  | UsernameTaken Text
   deriving (Show)
 
 instance ToJSON Error where
@@ -45,6 +46,12 @@ instance ToJSON Error where
     , "username" .= u
     ]
 
+  toJSON (UsernameTaken u) = Json.object
+    [ "type" .= ("error" :: Text)
+    , "error" .= ("name_taken" :: Text)
+    , "username" .= u
+    ]
+    
 toJson :: ToJSON a => a -> Text
 toJson a = (toStrict . TLE.decodeUtf8) (Json.encode a)
 
