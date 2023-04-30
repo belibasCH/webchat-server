@@ -1,0 +1,15 @@
+version: '3.9'
+services:
+  server:
+    image: haskell:9.2.7-slim
+    command: ['stack', 'run']
+    ports:
+      - '8080:8080'
+    working_dir: '/app'
+    volumes:
+      - .:/app
+      - stack-cache:/root/.stack/
+    tty: true
+
+volumes:
+  stack-cache:
