@@ -30,6 +30,7 @@ library
       Api.Update
       Api.Utils
       Data.Id
+      Data.Message
       Data.User
       Db.Conn
       Db.Repo

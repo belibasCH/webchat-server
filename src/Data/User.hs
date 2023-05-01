@@ -31,15 +31,14 @@ isPassword t u = t == password u
 
 instance Db.Write User where
   write u =
-    [ "_id" =: Data.User.id u
-    , "name" =: name u
+    [ "_id"      =: Data.User.id u
+    , "name"     =: name u
     , "password" =: password u
     ]
 
 instance Db.Read User where
-  read doc =
-    User
-      { Data.User.id = at "_id" doc
-      , name = at "name" doc
-      , password = at "password" doc
-      }
+  read doc = User
+    { Data.User.id = at "_id" doc
+    , name = at "name" doc
+    , password = at "password" doc
+    }

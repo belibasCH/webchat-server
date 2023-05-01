@@ -6,6 +6,11 @@ module Api.Msg
 
 import Data.Text (Text)
 import qualified Data.Text as T
+
+import Data.Id (Id)
+import Data.User (User)
+import Data.Message (Message)
+
 import Data.Aeson (FromJSON, (.:))
 import qualified Data.Aeson as Json
 import qualified Data.Aeson.Types as Json
@@ -16,7 +21,7 @@ import Result
 data Msg
   = Login Text Text
   | CreateUser Text Text
-  | Send Text
+  | Send Text (Id User)
   deriving (Show)
 
 instance FromJSON Msg where
@@ -24,7 +29,7 @@ instance FromJSON Msg where
     msgType <- o .: "type" :: Json.Parser Text
     case msgType of
       "login" -> Login <$> o .: "username" <*> o .: "password"
-      "send" -> Send <$> o .: "text"
+      "send" -> Send <$> o .: "text" <*> o .: "receiver_id"
       "create_user" -> CreateUser <$> o .: "username" <*> o .: "password"
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")
 

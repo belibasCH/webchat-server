@@ -18,6 +18,9 @@ import qualified Data.Id as Id
 import Data.User (User)
 import qualified Data.User as User
 
+import Data.Message (Message (..))
+import qualified Data.Message as Message
+
 import Api.Client (Client)
 import qualified Api.Client as Client
 
@@ -74,24 +77,34 @@ unwrap conn m = do
     Failure e -> WS.sendTextData conn $ toJson e
 
 talk :: Client -> MVar ServerState -> ResultT IO ()
-talk c s = forever $ wrap . unwrap (Client.conn c) $ do
+talk c ms = forever $ wrap . unwrap (Client.conn c) $ do
   msg <- wrap $ WS.receiveData (Client.conn c)
   msg <- wrap $ parseMsgFromJson msg
   case msg of
     Login _ _ -> wrap . Failure $ BadRequest "already logged in"
-    CreateUser n p -> createUser (Client.conn c) s (n, p)
-    Send text -> wrap $ print ("sending '" <> text <> "'")
+    CreateUser n p -> createUser (Client.conn c) ms (n, p)
+    Send txt recId -> do
+      id <- wrap Id.new
+      s <- wrap $ readMVar ms
+      msg <- ServerState.sendMessage Message
+        { Message.id = id
+        , text = txt
+        , senderId = Client.userId c
+        , receiverId = recId
+        , isSent = False
+        } s
+      ServerState.saveMessage msg s
 
 createUser :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO ()
 createUser conn ms (n, p) = do
   u <- wrap $ User.make n p
   s <- wrap $ readMVar ms
-  ServerState.addUser u s
+  ServerState.saveUser u s
   send (UserCreated u) conn
 
 login :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO Client
 login conn ms (n, p) = do
-  mu <- ServerState.findUserByName n =<< (wrap $ readMVar ms)
+  mu <- ServerState.findUserByName n =<< wrap (readMVar ms)
   case mu of
     Nothing -> wrap . Failure $ LoginFailed n
     Just u -> if User.isPassword p u
