@@ -31,10 +31,10 @@ import Api.Utils
 
 run :: IO ()
 run = do
-  print ("run server" :: Text)
-  state <- newMVar ServerState.new
+  putStrLn "run server"
+  state <- ServerState.make >>= newMVar
   let opts = WS.defaultServerOptions
-  WS.runServerWithOptions opts $ application state
+  WS.runServerWithOptions opts { WS.serverHost = "0.0.0.0" } $ application state
 
 application :: MVar ServerState -> WS.ServerApp
 application state pending = do
@@ -47,14 +47,14 @@ handleRequest conn s = do
   msg <- wrap $ WS.receiveData conn
   msg <- wrap $ parseMsgFromJson msg
   case msg of
-    Login n p -> respondWithLogin n p
+    Login n p -> loginAndTalk n p
     CreateUser n p -> do
       createUser conn s (n, p)
       handleRequest conn s
     _ -> wrap $ Failure (BadRequest "unexpected message type")
   where
-    respondWithLogin :: Text -> Text -> ResultT IO ()
-    respondWithLogin n p =  do
+    loginAndTalk :: Text -> Text -> ResultT IO ()
+    loginAndTalk n p =  do
       c <- login conn s (n, p)
       Client.send (LoginSucceeded n) c
       let talk' = talk c s
@@ -83,18 +83,19 @@ talk c s = forever $ wrap . unwrap (Client.conn c) $ do
     Send text -> wrap $ print ("sending '" <> text <> "'")
 
 createUser :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO ()
-createUser conn s (n, p) = do
+createUser conn ms (n, p) = do
   u <- wrap $ User.make n p
-  wrap $ modifyMVar_ s (pure . ServerState.addUser u)
+  s <- wrap $ readMVar ms
+  ServerState.addUser u s
   send (UserCreated u) conn
 
 login :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO Client
-login conn s (n, p) = do
-  s' <- wrap $ readMVar s
-  case ServerState.findUserByName n s' of
+login conn ms (n, p) = do
+  mu <- ServerState.findUserByName n =<< (wrap $ readMVar ms)
+  case mu of
     Nothing -> wrap . Failure $ LoginFailed n
     Just u -> if User.isPassword p u
-      then wrap $ modifyMVar s (\s -> Client.make (User.id u) conn <&> \c -> (ServerState.addClient c s, c))
+      then wrap $ modifyMVar ms (\s -> Client.make (User.id u) conn <&> \c -> (ServerState.addClient c s, c))
       else wrap . Failure $ LoginFailed n
 
 --  if u == "Username" && p == "Password"

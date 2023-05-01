@@ -10,6 +10,36 @@ services:
       - .:/app
       - stack-cache:/root/.stack/
     tty: true
+    depends_on:
+      - db
+
+  db:
+    image: mongo:5.0.10
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - db:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: webchat
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: db
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: root
+    depends_on:
+      - db
+    links:
+      - db
 
 volumes:
   stack-cache:
+  db:
