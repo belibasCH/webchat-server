@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Api.Update
-  ( Update (..)
+module Api.Answer
+  ( Answer (..)
   ) where
 
 import Data.Text (Text)
@@ -14,13 +14,13 @@ import qualified Data.User as User
 import Data.Message (Message)
 import qualified Data.Message as Message
 
-data Update
+data Answer
   = LoginSucceeded Text
   | UserCreated User
   | Receive Message
   deriving (Show)
 
-instance ToJSON Update where
+instance ToJSON Answer where
   toJSON (LoginSucceeded u) = Json.object
     [ "type" .= ("login_succeeded" :: Text)
     , "username" .= u
@@ -31,7 +31,7 @@ instance ToJSON Update where
     , "id" .= User.id u
     , "name" .= User.name u
     ]
-    
+
   toJSON (Receive msg) = Json.object
     [ "type" .= ("receive_message" :: Text)
     , "id" .= Message.id msg

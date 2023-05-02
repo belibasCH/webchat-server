@@ -7,6 +7,7 @@ import Data.UUID (UUID)
 import Data.UUID.V4 (nextRandom)
 import qualified Data.UUID as UUID
 
+import Data.Functor ((<&>))
 import Data.Typeable (Typeable)
 import Data.Hashable (Hashable, hashWithSalt)
 import Data.Aeson (ToJSON, toJSON, FromJSON, parseJSON)
@@ -14,7 +15,7 @@ import Data.Aeson (ToJSON, toJSON, FromJSON, parseJSON)
 import qualified Database.MongoDB as Mongo
 
 newtype Id a = Id UUID
-  deriving (Show, Eq, Ord, Typeable)
+  deriving (Eq, Ord, Typeable)
 
 new :: IO (Id a)
 new = Id <$> nextRandom
@@ -30,3 +31,9 @@ instance FromJSON (Id a) where
 
 instance Typeable a => Mongo.Val (Id a) where
   val (Id uuid) = Mongo.String (UUID.toText uuid)
+  
+  cast' (Mongo.String str) = UUID.fromText str <&> Id
+  cast' _ = Nothing
+  
+instance Show (Id a) where
+  show (Id uuid) = show uuid

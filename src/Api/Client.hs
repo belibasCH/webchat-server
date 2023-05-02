@@ -18,8 +18,8 @@ import qualified Data.Id as Id
 import Data.User (User)
 import qualified Data.User
 
-import Api.Msg
-import Api.Update
+import Api.Question
+import Api.Answer
 import Result
 import Api.Utils (toJson)
 

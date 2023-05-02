@@ -24,10 +24,10 @@ source-repository head
 library
   exposed-modules:
       Api
+      Api.Answer
       Api.Client
-      Api.Msg
+      Api.Question
       Api.ServerState
-      Api.Update
       Api.Utils
       Data.Id
       Data.Message

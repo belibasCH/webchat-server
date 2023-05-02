@@ -4,7 +4,7 @@ module Api (run) where
 
 import Data.Text (Text)
 import Control.Concurrent (MVar, newMVar, readMVar, modifyMVar_, modifyMVar)
-import Control.Monad (forever)
+import Control.Monad (forever, mapM_)
 import Data.Functor ((<&>))
 
 import qualified Network.WebSockets as WS
@@ -28,8 +28,8 @@ import Api.ServerState (ServerState)
 import qualified Api.ServerState as ServerState
 
 import Result
-import Api.Msg
-import Api.Update
+import Api.Question
+import Api.Answer
 import Api.Utils
 
 run :: IO ()
@@ -46,22 +46,23 @@ application state pending = do
 
 
 handleRequest :: WS.Connection -> MVar ServerState -> ResultT IO ()
-handleRequest conn s = do
-  msg <- wrap $ WS.receiveData conn
-  msg <- wrap $ parseMsgFromJson msg
-  case msg of
+handleRequest conn ms = do
+  q <- receiveQuestion conn
+  case q of
     Login n p -> loginAndTalk n p
     CreateUser n p -> do
-      createUser conn s (n, p)
-      handleRequest conn s
+      createUser conn ms (n, p)
+      handleRequest conn ms
     _ -> wrap $ Failure (BadRequest "unexpected message type")
   where
     loginAndTalk :: Text -> Text -> ResultT IO ()
     loginAndTalk n p =  do
-      c <- login conn s (n, p)
+      c <- login conn ms (n, p)
       Client.send (LoginSucceeded n) c
-      let talk' = talk c s
-      let disconnect' = disconnect c s
+      s <- (wrap . readMVar) ms
+      mapM_ (`ServerState.sendMessage` s) =<< ServerState.listUnreceivedMessages (Client.userId c) s
+      let talk' = talk c ms
+      let disconnect' = disconnect c ms
       talk' `finally` disconnect'
 
 disconnect :: Client -> MVar ServerState -> ResultT IO ()
@@ -78,22 +79,30 @@ unwrap conn m = do
 
 talk :: Client -> MVar ServerState -> ResultT IO ()
 talk c ms = forever $ wrap . unwrap (Client.conn c) $ do
-  msg <- wrap $ WS.receiveData (Client.conn c)
-  msg <- wrap $ parseMsgFromJson msg
-  case msg of
+  q <- receiveQuestion (Client.conn c)
+  case q of
     Login _ _ -> wrap . Failure $ BadRequest "already logged in"
     CreateUser n p -> createUser (Client.conn c) ms (n, p)
-    Send txt recId -> do
-      id <- wrap Id.new
+    Send txt recId -> doSend txt recId
+    Received msgId -> do
       s <- wrap $ readMVar ms
-      msg <- ServerState.sendMessage Message
-        { Message.id = id
-        , text = txt
-        , senderId = Client.userId c
-        , receiverId = recId
-        , isSent = False
-        } s
+      msgOpt <- ServerState.findMessage msgId s
+      case msgOpt of
+        Nothing  -> error "message not found" -- TODO report this error to the client
+        Just msg ->  ServerState.saveMessage msg { Message.state = Message.Received } s
+  where
+    doSend :: Text -> Id User -> ResultT IO ()
+    doSend txt recId = do
+      msgId <- wrap Id.new
+      s <- wrap $ readMVar ms
+      let msg = Message { Message.id = msgId
+                       , text = txt
+                       , senderId = Client.userId c
+                       , receiverId = recId
+                       , state = Message.Sent
+                       }
       ServerState.saveMessage msg s
+      ServerState.sendMessage msg s
 
 createUser :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO ()
 createUser conn ms (n, p) = do

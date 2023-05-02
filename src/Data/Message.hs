@@ -2,6 +2,7 @@
 
 module Data.Message
   ( Message (..)
+  , SendState (..)
   ) where
 
 import Data.Text (Text)
@@ -16,8 +17,14 @@ data Message = Message
   , text :: Text
   , senderId :: Id User
   , receiverId :: Id User
-  , isSent :: Bool
+  , state :: SendState
   } deriving (Show)
+  
+data SendState
+  = Sent
+  | Received
+  | Read
+  deriving (Show, Read)
 
 instance Db.Write Message where
   write msg =
@@ -25,7 +32,7 @@ instance Db.Write Message where
     , "text" =: text msg
     , "sender_id" =: senderId msg
     , "receiver_id" =: receiverId msg
-    , "is_sent" =: isSent msg
+    , "state" =: show (state msg)
     ]
 
 instance Db.Read Message where
@@ -34,5 +41,5 @@ instance Db.Read Message where
     , text = at "text" doc
     , senderId = at "sender_id" doc
     , receiverId = at "receiver_id" doc
-    , isSent = at "is_sent" doc
+    , state = read (at "state" doc)
     }
