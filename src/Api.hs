@@ -57,9 +57,9 @@ handleRequest conn ms = do
     _ -> wrap $ Failure (BadRequest "unexpected message type")
   where
     loginAndTalk :: Text -> Text -> ResultT IO ()
-    loginAndTalk n p =  do
-      c <- login conn ms (n, p)
-      Client.send (LoginSucceeded n) c
+    loginAndTalk un pw =  do
+      (c, u) <- login conn ms (un, pw)
+      Client.send (LoginSucceeded u) c
       s <- (wrap . readMVar) ms
       mapM_ (`ServerState.sendMessage` s) =<< ServerState.listUnreceivedMessages (Client.userId c) s
       let talk' = talk c ms
@@ -81,18 +81,20 @@ unwrap conn m = do
 talk :: Client -> MVar ServerState -> ResultT IO ()
 talk c ms = forever $ wrap . unwrap (Client.conn c) $ do
   q <- receiveQuestion (Client.conn c)
+  s <- wrap $ readMVar ms
   case q of
     Login _ _ -> wrap . Failure $ BadRequest "already logged in"
     CreateUser n p -> createUser (Client.conn c) ms (n, p)
     Send txt recId -> doSend txt recId
     Received msgId -> do
-      s <- wrap $ readMVar ms
       msgOpt <- ServerState.findMessage msgId s
       case msgOpt of
         Nothing  -> error "message not found" -- TODO report this error to the client
         Just msg -> wrap Time.getCurrentTime >>= \now -> ServerState.saveMessage msg { Message.receivedAt = Just now } s
+    LoadUsers -> do
+      us <- ServerState.listUsers s <&> filter (\u -> User.id u /= Client.userId c)
+      Client.send (UsersLoaded us) c
     LoadChat uId -> do
-      s <- wrap $ readMVar ms
       msgs <- ServerState.listMessages (Client.userId c) uId s
       Client.send (ChatLoaded msgs) c
   where
@@ -120,13 +122,13 @@ createUser conn ms (n, p) = do
   ServerState.saveUser u s
   send (UserCreated u) conn
 
-login :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO Client
+login :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO (Client, User)
 login conn ms (n, p) = do
   mu <- ServerState.findUserByName n =<< wrap (readMVar ms)
   case mu of
     Nothing -> wrap . Failure $ LoginFailed n
     Just u -> if User.isPassword p u
-      then wrap $ modifyMVar ms (\s -> Client.make (User.id u) conn <&> \c -> (ServerState.addClient c s, c))
+      then wrap $ modifyMVar ms (\s -> Client.make (User.id u) conn <&> \c -> (ServerState.addClient c s, (c, u)))
       else wrap . Failure $ LoginFailed n
 
 --  if u == "Username" && p == "Password"

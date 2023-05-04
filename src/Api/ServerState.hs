@@ -5,6 +5,7 @@ module Api.ServerState
   , make
   , addClient
   , removeClient
+  , listUsers
   , saveUser
   , findUserByName
   , findMessage
@@ -56,8 +57,12 @@ addClient c s = s { clients = Map.insert (Client.id c) c (clients s) }
 removeClient :: Id Client -> ServerState -> ServerState
 removeClient cId s = s { clients = Map.delete cId (clients s) }
 
+
 findUserByName :: Text -> ServerState -> ResultT IO (Maybe User)
 findUserByName n s = wrap $ Db.findUserByName n (users s)
+
+listUsers :: ServerState -> ResultT IO [User]
+listUsers s = wrap $ Db.list (users s)
 
 saveUser :: User -> ServerState -> ResultT IO ()
 saveUser u s = wrap $ Db.save u (users s)

@@ -16,17 +16,21 @@ import Data.Message (Message)
 import qualified Data.Message as Message
 
 data Answer
-  = LoginSucceeded Text
+  = LoginSucceeded User
   | UserCreated User
   | Sent Message
   | Receive Message
+  | UsersLoaded [User]
   | ChatLoaded [Message]
   deriving (Show)
 
 instance ToJSON Answer where
   toJSON (LoginSucceeded u) = Json.object
     [ "type" .= ("login_succeeded" :: Text)
-    , "username" .= u
+    , "user" .= Json.object
+      [ "id" .= User.id u
+      , "name" .= User.name u
+      ]
     ]
     
   toJSON (UserCreated u) = Json.object
@@ -48,6 +52,14 @@ instance ToJSON Answer where
     , "sender_id" .= Message.senderId msg
     , "text" .= Message.text msg
     , "sent_at" .= Message.sentAt msg
+    ]
+
+  toJSON (UsersLoaded us) = Json.object
+    [ "type" .= ("users_loaded" :: Text)
+    , "users" .= toJSONList (us <&> \u -> Json.object
+      [ "id" .= User.id u
+      , "name" .= User.name u
+      ])
     ]
 
   toJSON (ChatLoaded msgs) = Json.object

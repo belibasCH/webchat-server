@@ -5,7 +5,9 @@ module Db.Conn
   , Db.Conn.connect
   , run
   , Write (write, writeId)
-  , Db.Conn.Read (read)
+  , Db.Conn.Read (read, order)
+  , asc
+  , desc
   ) where
 
 import qualified Database.MongoDB as Mongo
@@ -35,5 +37,14 @@ class Write a where
   write :: a -> Mongo.Document
   writeId :: a -> Id a
 
+asc :: Int
+asc = 1
+
+desc :: Int
+desc = -1
+
 class Read a where
   read :: Mongo.Document -> a
+
+  order :: [a] -> Mongo.Order
+  order _ = []

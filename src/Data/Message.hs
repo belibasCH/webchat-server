@@ -52,3 +52,5 @@ instance Db.Read Message where
     , receivedAt = at "received_at" doc
     , readAt = at "read_at" doc
     }
+    
+  order _ = ["sent_at" =: Db.asc]
