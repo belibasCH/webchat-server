@@ -39,5 +39,7 @@ findUserByName n (Repo col conn) = Db.run conn $ do
 
 listUnreceivedMessages :: Id User -> Repo Message -> IO [Message]
 listUnreceivedMessages recId (Repo col conn) = Db.run conn $ do
-  docs <- Mongo.rest =<< Mongo.findCommand (Mongo.select ["receiver_id" =: recId, "is_sent" =: ["$ne" =: Message.Sent]] col)
+  docs <- Mongo.rest =<< Mongo.findCommand
+    (Mongo.select ["receiver_id" =: recId, "received_at" =: Mongo.Null] col)
+    { Mongo.sort = ["sent_at" =: (1 :: Int)] }
   pure $ docs <&> Db.read

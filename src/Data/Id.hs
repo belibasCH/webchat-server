@@ -7,6 +7,7 @@ import Data.UUID (UUID)
 import Data.UUID.V4 (nextRandom)
 import qualified Data.UUID as UUID
 
+import Data.ByteString.Lazy.Internal as ByteString
 import Data.Functor ((<&>))
 import Data.Typeable (Typeable)
 import Data.Hashable (Hashable, hashWithSalt)
@@ -35,9 +36,9 @@ instance FromJSON (Id a) where
     Nothing -> Json.parseFail "invalid id"
 
 instance Typeable a => Mongo.Val (Id a) where
-  val (Id uuid) = Mongo.String (UUID.toText uuid)
+  val (Id uuid) = Mongo.Uuid . Mongo.UUID . ByteString.toStrict . UUID.toByteString $ uuid
   
-  cast' (Mongo.String str) = UUID.fromText str <&> Id
+  cast' (Mongo.Uuid (Mongo.UUID bstr)) = UUID.fromByteString (ByteString.fromStrict bstr) <&> Id
   cast' _ = Nothing
   
 instance Show (Id a) where

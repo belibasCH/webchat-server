@@ -37,6 +37,7 @@ instance ToJSON Answer where
     [ "type" .= ("message_sent" :: Text)
     , "id" .= Message.id msg
     , "sender_id" .= Message.senderId msg
+    , "sent_at" .= Message.sentAt msg
     ]
 
   toJSON (Receive msg) = Json.object
@@ -44,4 +45,5 @@ instance ToJSON Answer where
     , "id" .= Message.id msg
     , "sender_id" .= Message.senderId msg
     , "text" .= Message.text msg
+    , "sent_at" .= Message.sentAt msg
     ]

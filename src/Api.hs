@@ -27,6 +27,7 @@ import qualified Api.Client as Client
 import Api.ServerState (ServerState)
 import qualified Api.ServerState as ServerState
 
+import Data.Time as Time
 import Result
 import Api.Question
 import Api.Answer
@@ -89,17 +90,20 @@ talk c ms = forever $ wrap . unwrap (Client.conn c) $ do
       msgOpt <- ServerState.findMessage msgId s
       case msgOpt of
         Nothing  -> error "message not found" -- TODO report this error to the client
-        Just msg -> ServerState.saveMessage msg { Message.state = Message.Received } s
+        Just msg -> wrap Time.getCurrentTime >>= \now -> ServerState.saveMessage msg { Message.receivedAt = Just now } s
   where
     doSend :: Text -> Id User -> ResultT IO ()
     doSend txt recId = do
       msgId <- wrap Id.new
       s <- wrap $ readMVar ms
+      now <- wrap Time.getCurrentTime
       let msg = Message { Message.id = msgId
                        , text = txt
                        , senderId = Client.userId c
                        , receiverId = recId
-                       , state = Message.Sent
+                       , sentAt = now
+                       , receivedAt = Nothing
+                       , readAt = Nothing
                        }
       ServerState.saveMessage msg s
       ServerState.sendMessage msg s
