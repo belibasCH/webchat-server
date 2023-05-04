@@ -10,9 +10,12 @@ import qualified Data.UUID as UUID
 import Data.Functor ((<&>))
 import Data.Typeable (Typeable)
 import Data.Hashable (Hashable, hashWithSalt)
+import Data.Aeson as Json
+import Data.Aeson.Types as Json
 import Data.Aeson (ToJSON, toJSON, FromJSON, parseJSON)
 
 import qualified Database.MongoDB as Mongo
+import Control.Monad (mzero)
 
 newtype Id a = Id UUID
   deriving (Eq, Ord, Typeable)
@@ -27,7 +30,9 @@ instance ToJSON (Id a) where
   toJSON (Id uuid) = toJSON uuid
 
 instance FromJSON (Id a) where
-  parseJSON v = parseJSON v
+  parseJSON = Json.withText "Id" $ \str -> case UUID.fromText str of
+    Just uuid -> pure (Id uuid)
+    Nothing -> Json.parseFail "invalid id"
 
 instance Typeable a => Mongo.Val (Id a) where
   val (Id uuid) = Mongo.String (UUID.toText uuid)
