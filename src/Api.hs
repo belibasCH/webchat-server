@@ -91,6 +91,10 @@ talk c ms = forever $ wrap . unwrap (Client.conn c) $ do
       case msgOpt of
         Nothing  -> error "message not found" -- TODO report this error to the client
         Just msg -> wrap Time.getCurrentTime >>= \now -> ServerState.saveMessage msg { Message.receivedAt = Just now } s
+    LoadChat uId -> do
+      s <- wrap $ readMVar ms
+      msgs <- ServerState.listMessages (Client.userId c) uId s
+      Client.send (ChatLoaded msgs) c
   where
     doSend :: Text -> Id User -> ResultT IO ()
     doSend txt recId = do

@@ -5,6 +5,7 @@ module Db.Repo
   , save
   , find
   , findUserByName
+  , listMessages
   , listUnreceivedMessages
   ) where
 
@@ -36,6 +37,16 @@ findUserByName :: Text -> Repo User -> IO (Maybe User)
 findUserByName n (Repo col conn) = Db.run conn $ do
   doc <- Mongo.findOne (Mongo.select ["name" =: Mongo.Regex ("\\Q" <> n <> "\\E") "i"] col)
   pure $ doc <&> Db.read
+  
+listMessages :: Id User -> Id User -> Repo Message -> IO [Message]
+listMessages uId1 uId2 (Repo col conn) = Db.run conn $ do
+  docs <- Mongo.rest =<< Mongo.findCommand
+    (Mongo.select ["$or" =: 
+      [ ["sender_id" =: uId1, "receiver_id" =: uId2]
+      , ["sender_id" =: uId2, "receiver_id" =: uId1]
+      ]] col)
+    { Mongo.sort = ["sent_at" =: (1 :: Int)] }
+  pure $ docs <&> Db.read
 
 listUnreceivedMessages :: Id User -> Repo Message -> IO [Message]
 listUnreceivedMessages recId (Repo col conn) = Db.run conn $ do
@@ -43,3 +54,6 @@ listUnreceivedMessages recId (Repo col conn) = Db.run conn $ do
     (Mongo.select ["receiver_id" =: recId, "received_at" =: Mongo.Null] col)
     { Mongo.sort = ["sent_at" =: (1 :: Int)] }
   pure $ docs <&> Db.read
+  
+  
+                      

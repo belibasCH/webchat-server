@@ -25,6 +25,7 @@ data Question
   | CreateUser Text Text
   | Send Text (Id User)
   | Received (Id Message)
+  | LoadChat (Id User)
   deriving (Show)
 
 instance FromJSON Question where
@@ -34,7 +35,8 @@ instance FromJSON Question where
       "login" -> Login <$> o .: "username" <*> o .: "password"
       "create_user" -> CreateUser <$> o .: "username" <*> o .: "password"
       "send" -> Send <$> o .: "text" <*> o .: "receiver_id"
-      "received" -> Received <$> o.: "message_id"
+      "received" -> Received <$> o .: "message_id"
+      "load_chat" -> LoadChat <$> o .: "user_id"
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")
 
 receiveQuestion :: WS.Connection -> ResultT IO Question

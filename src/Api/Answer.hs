@@ -5,7 +5,8 @@ module Api.Answer
   ) where
 
 import Data.Text (Text)
-import Data.Aeson (ToJSON, (.=))
+import Data.Aeson (ToJSON, toJSONList, (.=))
+import Data.Functor ((<&>))
 import qualified Data.Aeson as Json
 
 import Data.User (User)
@@ -19,6 +20,7 @@ data Answer
   | UserCreated User
   | Sent Message
   | Receive Message
+  | ChatLoaded [Message]
   deriving (Show)
 
 instance ToJSON Answer where
@@ -46,4 +48,15 @@ instance ToJSON Answer where
     , "sender_id" .= Message.senderId msg
     , "text" .= Message.text msg
     , "sent_at" .= Message.sentAt msg
+    ]
+
+  toJSON (ChatLoaded msgs) = Json.object
+    [ "type" .= ("chat_loaded" :: Text)
+    , "messages" .= toJSONList (msgs <&> \msg -> Json.object
+      [ "id" .= Message.id msg
+      , "sender_id" .= Message.senderId msg
+      , "receiver_id" .= Message.receiverId msg
+      , "text" .= Message.text msg
+      , "sent_at" .= Message.sentAt msg
+      ])
     ]

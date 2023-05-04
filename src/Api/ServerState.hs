@@ -8,6 +8,7 @@ module Api.ServerState
   , saveUser
   , findUserByName
   , findMessage
+  , listMessages
   , saveMessage
   , sendMessage
   , listUnreceivedMessages
@@ -63,6 +64,9 @@ saveUser u s = wrap $ Db.save u (users s)
 
 findMessage :: Id Message -> ServerState -> ResultT IO (Maybe Message)
 findMessage msgId s = wrap $ Db.find msgId (messages s)
+
+listMessages :: Id User -> Id User -> ServerState -> ResultT IO [Message]
+listMessages uId1 uId2 s = wrap $ Db.listMessages uId1 uId2 (messages s)
 
 saveMessage :: Message -> ServerState -> ResultT IO ()
 saveMessage msg s = wrap $ Db.save msg (messages s)
