@@ -5,7 +5,8 @@ module Data.User
   , new
   , make
   , isPassword
-  ) where
+  )
+where
 
 import Prelude hiding (id)
 import Data.Text (Text)
@@ -45,5 +46,5 @@ instance Db.Read User where
     , name = at "name" doc
     , password = at "password" doc
     }
-    
+
   order _ = ["name" =: Db.asc]

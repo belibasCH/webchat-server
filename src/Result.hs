@@ -7,7 +7,8 @@ module Result
   , ResultT (..)
   , Result.finally
   , IOWrap (..)
-  ) where
+  )
+where
 
 import Control.Exception as Ex
 import Data.Text (Text)

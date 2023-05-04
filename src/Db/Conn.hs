@@ -8,7 +8,8 @@ module Db.Conn
   , Db.Conn.Read (read, order)
   , asc
   , desc
-  ) where
+  )
+where
 
 import qualified Database.MongoDB as Mongo
 import Control.Exception (catch)

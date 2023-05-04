@@ -2,7 +2,8 @@
 
 module Api.Answer
   ( Answer (..)
-  ) where
+  )
+where
 
 import Data.Text (Text)
 import Data.Aeson (ToJSON, toJSONList, (.=))

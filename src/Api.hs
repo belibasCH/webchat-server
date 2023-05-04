@@ -45,7 +45,6 @@ application state pending = do
   conn <- WS.acceptRequest pending
   WS.withPingThread conn 30 (return ()) $ unwrap conn $ handleRequest conn state
 
-
 handleRequest :: WS.Connection -> MVar ServerState -> ResultT IO ()
 handleRequest conn ms = do
   q <- receiveQuestion conn

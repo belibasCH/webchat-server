@@ -5,7 +5,8 @@ module Api.Client
   , userId
   , conn
   , send
-  ) where
+  )
+where
 
 import Data.Functor ((<&>))
 import Data.Aeson (ToJSON)

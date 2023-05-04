@@ -13,7 +13,8 @@ module Api.ServerState
   , saveMessage
   , sendMessage
   , listUnreceivedMessages
-  ) where
+  )
+where
 
 import Data.HashMap as Map
 import Control.Monad (mapM_)

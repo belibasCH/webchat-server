@@ -9,7 +9,8 @@ module Db.Repo
   , findUserByName
   , listMessages
   , listUnreceivedMessages
-  ) where
+  )
+where
 
 import Data.Text (Text)
 import Data.Functor ((<&>))

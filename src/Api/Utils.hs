@@ -1,7 +1,8 @@
 module Api.Utils
   ( send
   , toJson
-  ) where
+  )
+where
 
 import Data.Text (Text)
 import Data.Text.Lazy (toStrict)

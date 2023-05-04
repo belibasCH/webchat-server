@@ -1,7 +1,8 @@
 module Data.Id
   ( Id
   , new
-  ) where
+  )
+where
    
 import Data.UUID (UUID)
 import Data.UUID.V4 (nextRandom)
