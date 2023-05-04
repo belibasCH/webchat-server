@@ -89,7 +89,7 @@ talk c ms = forever $ wrap . unwrap (Client.conn c) $ do
       msgOpt <- ServerState.findMessage msgId s
       case msgOpt of
         Nothing  -> error "message not found" -- TODO report this error to the client
-        Just msg ->  ServerState.saveMessage msg { Message.state = Message.Received } s
+        Just msg -> ServerState.saveMessage msg { Message.state = Message.Received } s
   where
     doSend :: Text -> Id User -> ResultT IO ()
     doSend txt recId = do
@@ -103,6 +103,7 @@ talk c ms = forever $ wrap . unwrap (Client.conn c) $ do
                        }
       ServerState.saveMessage msg s
       ServerState.sendMessage msg s
+      Client.send (Sent msg) c
 
 createUser :: WS.Connection -> MVar ServerState -> (Text, Text) -> ResultT IO ()
 createUser conn ms (n, p) = do

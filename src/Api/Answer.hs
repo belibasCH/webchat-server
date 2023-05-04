@@ -17,6 +17,7 @@ import qualified Data.Message as Message
 data Answer
   = LoginSucceeded Text
   | UserCreated User
+  | Sent Message
   | Receive Message
   deriving (Show)
 
@@ -32,8 +33,15 @@ instance ToJSON Answer where
     , "name" .= User.name u
     ]
 
+  toJSON (Sent msg) = Json.object
+    [ "type" .= ("message_sent" :: Text)
+    , "id" .= Message.id msg
+    , "sender_id" .= Message.senderId msg
+    ]
+
   toJSON (Receive msg) = Json.object
     [ "type" .= ("receive_message" :: Text)
     , "id" .= Message.id msg
     , "sender_id" .= Message.senderId msg
+    , "text" .= Message.text msg
     ]

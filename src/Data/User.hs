@@ -7,12 +7,13 @@ module Data.User
   , isPassword
   ) where
 
-import Data.Id (Id)
-import qualified Data.Id as Id
-
+import Prelude hiding (id)
 import Data.Text (Text)
 import qualified Db.Conn as Db
 import Database.MongoDB ((=:), at)
+
+import Data.Id (Id)
+import qualified Data.Id as Id
 
 data User = User
   { id :: Id User
@@ -35,6 +36,8 @@ instance Db.Write User where
     , "name"     =: name u
     , "password" =: password u
     ]
+
+  writeId u = id u
 
 instance Db.Read User where
   read doc = User

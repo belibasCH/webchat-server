@@ -14,7 +14,7 @@ module Api.ServerState
   ) where
 
 import Data.HashMap as Map
-import Control.Monad as Monad
+import Control.Monad (mapM_)
 
 import Data.Message (Message)
 import qualified Data.Message as Message
@@ -70,7 +70,7 @@ saveMessage msg s = wrap $ Db.save msg (messages s)
 sendMessage :: Message -> ServerState -> ResultT IO ()
 sendMessage msg s = do
   let cs = flip List.filter (Map.elems (clients s)) $ \c -> Client.userId c == Message.receiverId msg
-  Monad.mapM_ (Client.send (Receive msg)) cs
+  mapM_ (Client.send (Receive msg)) cs
 
 listUnreceivedMessages :: Id User -> ServerState -> ResultT IO [Message]
 listUnreceivedMessages recId s = wrap $ Db.listUnreceivedMessages recId (messages s)
