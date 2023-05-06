@@ -49,7 +49,7 @@ application fs pending = do
           runNestedAction (handleUnprotectedClientMsg um)
           talkUnauthorized
         _ -> failWith (BadRequest "this message type requires authentication")
-          
+
     initializeClient :: Id User -> Action (Id Client)
     initializeClient uId = do
       readState >>= ServerState.broadcast (UserLoggedIn uId)
@@ -75,11 +75,12 @@ talk uId cId = loop $
 handleClientMsg :: Id User -> ClientMsg -> Action ()
 handleClientMsg _ (Login _ _) = failWith (BadRequest "already logged in")
 
-handleClientMsg uId (RenameUser un) = do
+handleClientMsg uId (ChangeUsername un) = do
+  handleDuplicateUsername un
   u' <- whenNothingM
     (runIO $ Db.updateUserName un uId <$> readUsers)
     (error "current user missing in database")
-  ServerState.broadcast (UserNameChanged u') =<< readState
+  ServerState.broadcast (UsernameChanged u') =<< readState
 
 handleClientMsg uId DeleteUser = do
   unlessM
@@ -147,25 +148,34 @@ handleClientMsg uId LoadChats = do
 
 
 handleClientMsg uId (LoadChat uId2) = do
+  unlessM otherUserExists
+    (failWith $ UserNotFound uId2)
   is <- runIO $ Db.listChatMessages uId uId2 <$> readMessages
   send (ChatLoaded is)
+  where
+    otherUserExists :: Action Bool
+    otherUserExists = runIO $ Db.exists uId2 <$> readUsers
 
 handleClientMsg _ (Unprotected um) = handleUnprotectedClientMsg um
 
 handleUnprotectedClientMsg :: UnprotectedClientMsg -> Action ()
 handleUnprotectedClientMsg (CreateUser un pw) = do
+  handleDuplicateUsername un
   let pw' = Text.strip pw
-  whenM isDuplicate $ failWith (UsernameTaken un)
   when (Text.null pw') $ failWith BlankPassword
   u <- liftIO $ User.make un pw'
   runIO $ Db.save u <$> readUsers
   send (UserCreated u)
   ServerState.broadcast (UserCreated u) =<< readState
   pure ()
+
+handleDuplicateUsername :: Text -> Action ()
+handleDuplicateUsername un =
+  whenM isDuplicate $ failWith (UsernameTaken un)
   where
     isDuplicate :: Action Bool
     isDuplicate = runIO $ Db.existsUserByName un <$> readUsers
-
+  
 login :: Text -> Text -> Action (Id User)
 login un pw = do
   u <- runIO (Db.findUserByName un <$> readUsers) & (`whenNothingM` (failWith $ LoginFailed un))

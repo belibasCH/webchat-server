@@ -26,7 +26,7 @@ data ClientMsg
   | LoadUsers
   | LoadChats
   | LoadChat (Id User)
-  | RenameUser Text
+  | ChangeUsername Text
   | DeleteUser
     
   -- | Attempt to authenticate with the given username and password.
@@ -53,7 +53,7 @@ instance FromJSON ClientMsg where
       "load_chats" -> pure LoadChats
       "load_chat" -> LoadChat <$> o .: "user_id"
       "login" -> Login <$> o .: "username" <*> o .: "password"
-      "rename_user" -> RenameUser <$> o .: "username"
+      "change_username" -> ChangeUsername <$> o .: "username"
       "delete_user" -> pure DeleteUser
       "create_user" -> Unprotected <$> (CreateUser <$> o .: "username" <*> o .: "password")
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")

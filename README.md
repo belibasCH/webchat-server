@@ -72,12 +72,33 @@ Creates a new user account.
 
 **Broadcasts**
 
-* [`user_created`](#receive). Note that unlike other broadcasts, this is also sent to the originating connection, no matter its authentication state.
+* [`user_created`](#user_created). Note that unlike other broadcasts, this is also sent to the originating connection, no matter its authentication state.
 
 **Errors**
 
 * [`username_taken`](#username_taken), if there's already a user with the specified name (case-insensitive!).
 * [`blank_password`](#blank_password), if the specified password is blank.
+
+#### `change_username`
+
+Changes the name of the authenticated user.
+
+```json
+{
+    "type": "change_username",
+    
+    // The new username.
+    "username": "String"
+}
+```
+
+**Broadcasts**
+
+* [`username_changed`](#username_changed)
+
+**Errors**
+
+* [`username_taken`](#username_taken), if there's already a user with the specified name (case-insensitive!).
 
 #### `login`
 
@@ -222,7 +243,7 @@ Requests a chat of the authenticated user to be loaded and sent to this client.
 {
     "type": "load_chat",
     
-    // The id of the user with which the chat is shared.
+    // The id of the other user with which the chat is shared.
     "user_id": "UUID"
 }
 ```
@@ -232,6 +253,8 @@ Requests a chat of the authenticated user to be loaded and sent to this client.
 * [`chat_loaded`](#chat_loaded)
 
 **Errors**
+
+* [`not_found`](#not_found), if the other chat user does not exist.
 
 * [`bad_request`](#bad_request), if the connection is not authenticated.
 
