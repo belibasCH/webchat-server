@@ -34,6 +34,7 @@ import Data.Text (Text)
 import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Encoding as TLE
 import Data.Id (Id)
+import Data.User (User)
 import Data.Message (Message)
 import qualified Control.Exception as Ex
 import qualified Data.Aeson as Json
@@ -111,6 +112,7 @@ data Error
   | LoginFailed Text
   | UsernameTaken Text
   | BlankPassword
+  | UserNotFound (Id User)
   | MessageNotFound (Id Message)
   deriving (Show)
 
@@ -139,6 +141,13 @@ instance ToJSON Error where
   toJSON BlankPassword = Json.object
     [ "type" .= ("error" :: Text)
     , "error" .= ("blank_password" :: Text)
+    ]
+
+  toJSON (UserNotFound uId) = Json.object
+    [ "type" .= ("error" :: Text)
+    , "error" .= ("not_found" :: Text)
+    , "data_type" .= ("User" :: Text)
+    , "id" .= uId
     ]
 
   toJSON (MessageNotFound msgId) = Json.object

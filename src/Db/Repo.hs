@@ -6,6 +6,7 @@ module Db.Repo
   , save
   , list
   , find
+  , exists
   , delete
   , findUserByName
   , existsUserByName
@@ -48,6 +49,11 @@ find :: Typeable a => Db.Read a => Id a -> Repo a -> IO (Maybe a)
 find aId (Repo col conn) = Db.run conn $ do
   doc <- Mongo.findOne (Mongo.select ["_id" =: aId] col)
   pure $ doc <&> Db.read
+
+exists :: Typeable a => Id a -> Repo a -> IO Bool
+exists aId (Repo col conn) = Db.run conn $ do
+  n <- Mongo.count (Mongo.select ["_id" =: aId] col)
+  pure $ n /= 0
 
 delete :: Typeable a => Id a -> Repo a -> IO Bool
 delete aId (Repo col conn) = Db.run conn $ do

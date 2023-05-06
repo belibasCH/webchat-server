@@ -90,6 +90,7 @@ handleClientMsg uId DeleteUser = do
   liftIO $ throwIO (WS.CloseRequest 1000 "user deleted")
 
 handleClientMsg uId (Send t recId) = do
+  unlessM receiverExists $ failWith (UserNotFound recId)
   msgId <- liftIO Id.make
   now   <- liftIO Time.getCurrentTime
   let msg = Message {
@@ -104,6 +105,10 @@ handleClientMsg uId (Send t recId) = do
   runIO $ Db.save msg <$> readMessages
   ServerState.sendMessage msg =<< readState
   send (Sent msg)
+  
+  where
+    receiverExists :: Action Bool
+    receiverExists = runIO $ Db.exists recId <$> readUsers
 
 handleClientMsg uId (Received msgId) = do
   now <- liftIO Time.getCurrentTime
