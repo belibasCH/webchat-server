@@ -23,6 +23,7 @@ data ClientMsg
   = Send Text (Id User)
   | Received (Id Message)
   | LoadUsers
+  | LoadChats
   | LoadChat (Id User)
   
   -- | Attempt to authenticate with the given username and password.
@@ -47,6 +48,7 @@ instance FromJSON ClientMsg where
       "send" -> Send <$> o .: "text" <*> o .: "receiver_id"
       "received" -> Received <$> o .: "message_id"
       "load_users" -> pure LoadUsers
+      "load_chats" -> pure LoadChats
       "load_chat" -> LoadChat <$> o .: "user_id"
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")
 

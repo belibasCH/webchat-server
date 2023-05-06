@@ -14,10 +14,8 @@ import Api.Action
 import Api.ServerMsg
 import Data.Id (Id)
 import Data.Message (Message)
-import Data.Text (Text)
 import Api.ServerState.Type
 import Data.User (User)
-import Data.Maybe (fromMaybe)
 import qualified Data.List as List
 import qualified Data.HashMap as Map
 import qualified Data.Message as Message

@@ -46,4 +46,4 @@ instance Db.Read User where
     , password = at "password" doc
     }
 
-  order _ = ["name" =: Db.asc]
+  order d _ = ["name" =: Db.asc * d]

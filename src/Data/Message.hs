@@ -5,20 +5,13 @@ module Data.Message
   )
 where
 
-import Prelude hiding (id)
-import Text.Read (readMaybe)
-
-import Data.Text (Text)
-import qualified Data.Text as Text
-
 import Data.Id (Id)
-import Data.User (User)
-
+import Data.Text (Text)
 import Data.Time (UTCTime)
-
+import Data.User (User)
+import Database.MongoDB (at, (=:))
+import Prelude hiding (id)
 import qualified Db.Conn as Db
-import Database.MongoDB ((=:), at)
-import qualified Database.MongoDB as Mongo
 
 data Message = Message
   { id :: Id Message
@@ -54,4 +47,4 @@ instance Db.Read Message where
     , readAt = at "read_at" doc
     }
 
-  order _ = ["sent_at" =: Db.asc]
+  order d _    = ["sent_at" =: Db.asc * d]

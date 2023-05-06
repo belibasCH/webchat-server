@@ -8,8 +8,11 @@ module Db.Repo
   , find
   , findUserByName
   , existsUserByName
-  , listMessages
+  , listChatMessages
   , listUnreceivedMessages
+  , findLatestChatMessage
+  , countTotalChatMessages
+  , countUnreadChatMessages
   , updateMessageReceivedAt
   )
 where
@@ -34,7 +37,7 @@ list :: forall a. Db.Read a => Repo a -> IO [a]
 list (Repo col conn) = Db.run conn $ do
   docs <- Mongo.rest =<< Mongo.findCommand
     (Mongo.select [] col)
-    { Mongo.sort = Db.order ([] :: [a]) }
+    { Mongo.sort = Db.order Db.asc ([] :: [a]) }
   pure $ docs <&> Db.read
 
 find :: Typeable a => Db.Read a => Id a -> Repo a -> IO (Maybe a)
@@ -55,22 +58,32 @@ existsUserByName un (Repo col conn) = Db.run conn $ do
 userByNameQuery :: Text -> Mongo.Collection -> Mongo.Query
 userByNameQuery un = Mongo.select ["name" =: Mongo.Regex ("\\Q" <> un <> "\\E") "i"]
 
-listMessages :: Id User -> Id User -> Repo Message -> IO [Message]
-listMessages uId1 uId2 (Repo col conn) = Db.run conn $ do
+listChatMessages :: Id User -> Id User -> Repo Message -> IO [Message]
+listChatMessages uId1 uId2 (Repo col conn) = Db.run conn $ do
   docs <- Mongo.rest =<< Mongo.findCommand
-    (Mongo.select ["$or" =:
-      [ ["sender_id" =: uId1, "receiver_id" =: uId2]
-      , ["sender_id" =: uId2, "receiver_id" =: uId1]
-      ]] col)
-    { Mongo.sort = Db.order ([] :: [Message]) }
+    (chatMessageQuery uId1 uId2 col)
+    { Mongo.sort = Db.order Db.asc ([] :: [Message]) }
   pure $ docs <&> Db.read
 
 listUnreceivedMessages :: Id User -> Repo Message -> IO [Message]
 listUnreceivedMessages recId (Repo col conn) = Db.run conn $ do
   docs <- Mongo.rest =<< Mongo.findCommand
     (Mongo.select ["receiver_id" =: recId, "received_at" =: Mongo.Null] col)
-    { Mongo.sort = Db.order ([] :: [Message]) }
+    { Mongo.sort = Db.order Db.asc ([] :: [Message]) }
   pure $ docs <&> Db.read
+
+findLatestChatMessage :: Id User -> Id User -> Repo Message -> IO (Maybe Message)
+findLatestChatMessage uId1 uId2 (Repo col conn) = Db.run conn $ do
+  doc <- Mongo.findOne (chatMessageQuery uId1 uId2 col) { Mongo.sort = Db.order Db.desc ([] :: [Message]) }
+  pure $ doc <&> Db.read
+  
+countTotalChatMessages :: Id User -> Id User -> Repo Message -> IO Int
+countTotalChatMessages uId1 uId2 (Repo col conn) = Db.run conn $
+  Mongo.count (chatMessageQuery uId1 uId2 col)
+  
+countUnreadChatMessages :: Id User -> Id User -> Repo Message -> IO Int
+countUnreadChatMessages sendId recId (Repo col conn) = Db.run conn $
+  Mongo.count (Mongo.select ["sender_id" =: sendId, "receiver_id" =: recId, "read_at" =: Mongo.Null] col)
   
 updateMessageReceivedAt :: UTCTime -> Id Message -> Repo Message -> IO Bool
 updateMessageReceivedAt recAt msgId (Repo col conn) = Db.run conn $ do
@@ -80,3 +93,11 @@ updateMessageReceivedAt recAt msgId (Repo col conn) = Db.run conn $ do
   pure $ case doc of
     Left _ -> False
     Right _ -> True
+
+chatMessageQuery :: Id User -> Id User -> Mongo.Collection -> Mongo.Query
+chatMessageQuery uId1 uId2 = Mongo.select
+  ["$or" =:
+    [ ["sender_id" =: uId1, "receiver_id" =: uId2]
+    , ["sender_id" =: uId2, "receiver_id" =: uId1]
+    ]
+  ]

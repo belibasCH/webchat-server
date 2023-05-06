@@ -11,10 +11,11 @@ module Db.Conn
   )
 where
 
-import qualified Database.MongoDB as Mongo
-import Control.Exception (catch)
 
+import Control.Exception (catch)
 import Data.Id (Id)
+import Database.MongoDB ((=:))
+import qualified Database.MongoDB as Mongo
 
 newtype Conn = Conn Mongo.Pipe
 
@@ -47,5 +48,6 @@ desc = -1
 class Read a where
   read :: Mongo.Document -> a
 
-  order :: [a] -> Mongo.Order
-  order _ = []
+  order :: Int -> [a] -> Mongo.Order
+  order (-1) _ = ["$natural" =: (-1 :: Int)] 
+  order _    _ = []

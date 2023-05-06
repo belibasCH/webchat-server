@@ -2,6 +2,7 @@
 
 module Api.ServerMsg
   ( ServerMsg (..)
+  , ChatItem
   )
 where
 
@@ -20,8 +21,14 @@ data ServerMsg
   | Sent Message
   | Receive Message
   | UsersLoaded [User]
+  | ChatsLoaded [ChatItem]
   | ChatLoaded [Message]
   deriving (Show)
+
+type ChatItem = (User, LatestMessage, TotalMessageCount, UnreadMessageCount)
+type LatestMessage = Message
+type TotalMessageCount = Int
+type UnreadMessageCount = Int
 
 instance ToJSON ServerMsg where
   toJSON (LoginSucceeded u) = Json.object
@@ -38,20 +45,13 @@ instance ToJSON ServerMsg where
     , "name" .= User.name u
     ]
 
-  toJSON (Sent msg) = Json.object
-    [ "type" .= ("message_sent" :: Text)
-    , "id" .= Message.id msg
-    , "sender_id" .= Message.senderId msg
-    , "sent_at" .= Message.sentAt msg
-    ]
+  toJSON (Sent msg) = Json.object $
+    ( "type" .= ("message_sent" :: Text)
+    ) : jsonMessage msg
 
-  toJSON (Receive msg) = Json.object
-    [ "type" .= ("receive_message" :: Text)
-    , "id" .= Message.id msg
-    , "sender_id" .= Message.senderId msg
-    , "text" .= Message.text msg
-    , "sent_at" .= Message.sentAt msg
-    ]
+  toJSON (Receive msg) = Json.object $
+    ( "type" .= ("receive_message" :: Text)
+    ) : jsonMessage msg
 
   toJSON (UsersLoaded us) = Json.object
     [ "type" .= ("users_loaded" :: Text)
@@ -61,13 +61,26 @@ instance ToJSON ServerMsg where
       ])
     ]
 
-  toJSON (ChatLoaded msgs) = Json.object
-    [ "type" .= ("chat_loaded" :: Text)
-    , "messages" .= toJSONList (msgs <&> \msg -> Json.object
-      [ "id" .= Message.id msg
-      , "sender_id" .= Message.senderId msg
-      , "receiver_id" .= Message.receiverId msg
-      , "text" .= Message.text msg
-      , "sent_at" .= Message.sentAt msg
+  toJSON (ChatsLoaded is) = Json.object
+    [ "type" .= ("chats_loaded" :: Text)
+    , "chats" .= toJSONList (is <&> \(u, msg, nt, nu) -> Json.object
+      [ "user_id" .= User.id u
+      , "last_message" .= Json.object (jsonMessage msg)
+      , "total_message_count" .= nt
+      , "unread_message_count" .= nu
       ])
     ]
+
+  toJSON (ChatLoaded msgs) = Json.object
+    [ "type" .= ("chat_loaded" :: Text)
+    , "messages" .= toJSONList (msgs <&> Json.object . jsonMessage)
+    ]
+
+jsonMessage :: Message -> [(Json.Key, Json.Value)]
+jsonMessage msg =
+  [ "id" .= Message.id msg
+  , "sender_id" .= Message.senderId msg
+  , "receiver_id" .= Message.receiverId msg
+  , "text" .= Message.text msg
+  , "sent_at" .= Message.sentAt msg
+  ]

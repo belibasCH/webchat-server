@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TupleSections #-}
 
 module Api
   ( run
@@ -18,7 +19,7 @@ import Data.Id (Id)
 import Data.Message (Message (Message))
 import Data.User (User)
 import Data.Text (Text)
-import qualified Api.ServerState as ServerState
+import Data.Maybe (catMaybes)
 import qualified Db.Repo as Db
 import qualified Network.WebSockets as WS
 import qualified Data.Id as Id
@@ -92,9 +93,22 @@ handleClientMsg _ LoadUsers = do
   us <- runIO $ Db.list <$> readUsers
   send (UsersLoaded us)
 
+handleClientMsg u LoadChats = do
+  ms <- runIO $ Db.list <$> readUsers
+  is <- mapM loadChat ms <&> catMaybes
+  send (ChatsLoaded is)
+  where
+    loadChat :: User -> Action (Maybe ChatItem)
+    loadChat u2 = do
+      msgs <- readMessages
+      mm <- liftIO $ Db.findLatestChatMessage (User.id u) (User.id u2) msgs
+      nt <- liftIO $ Db.countTotalChatMessages (User.id u) (User.id u2) msgs
+      nu <- liftIO $ Db.countUnreadChatMessages (User.id u2) (User.id u) msgs
+      pure $ mm <&> (u2, , nt, nu)
+
 handleClientMsg u (LoadChat uId) = do
-  ms <- runIO $ Db.listMessages uId (User.id u) <$> readMessages
-  send (ChatLoaded ms)
+  is <- runIO $ Db.listChatMessages uId (User.id u) <$> readMessages
+  send (ChatLoaded is)
 
 handleClientMsg _ (Unprotected um) = handleUnprotectedClientMsg um
 
