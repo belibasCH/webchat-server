@@ -1,22 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Api.Answer
-  ( Answer (..)
+module Api.ServerMsg
+  ( ServerMsg (..)
   )
 where
 
-import Data.Text (Text)
 import Data.Aeson (ToJSON, toJSONList, (.=))
 import Data.Functor ((<&>))
-import qualified Data.Aeson as Json
-
+import Data.Message (Message)
+import Data.Text (Text)
 import Data.User (User)
+import qualified Data.Aeson as Json
+import qualified Data.Message as Message
 import qualified Data.User as User
 
-import Data.Message (Message)
-import qualified Data.Message as Message
-
-data Answer
+data ServerMsg
   = LoginSucceeded User
   | UserCreated User
   | Sent Message
@@ -25,7 +23,7 @@ data Answer
   | ChatLoaded [Message]
   deriving (Show)
 
-instance ToJSON Answer where
+instance ToJSON ServerMsg where
   toJSON (LoginSucceeded u) = Json.object
     [ "type" .= ("login_succeeded" :: Text)
     , "user" .= Json.object

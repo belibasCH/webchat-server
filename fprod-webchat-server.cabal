@@ -24,17 +24,16 @@ source-repository head
 library
   exposed-modules:
       Api
-      Api.Answer
-      Api.Client
-      Api.Question
+      Api.Action
+      Api.ClientMsg
+      Api.ServerMsg
       Api.ServerState
-      Api.Utils
+      Api.ServerState.Type
       Data.Id
       Data.Message
       Data.User
       Db.Conn
       Db.Repo
-      Result
   other-modules:
       Paths_fprod_webchat_server
   hs-source-dirs:

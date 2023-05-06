@@ -1,29 +1,27 @@
 module Data.Id
   ( Id
-  , new
+  , make
   )
 where
-   
+  
+import Control.Monad (mzero)
+import Data.Aeson (FromJSON, ToJSON, parseJSON, toJSON)
+import Data.Aeson as Json
+import Data.Aeson.Types as Json
+import Data.ByteString.Lazy.Internal as ByteString
+import Data.Functor ((<&>))
+import Data.Hashable (Hashable, hashWithSalt)
+import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import Data.UUID.V4 (nextRandom)
 import qualified Data.UUID as UUID
-
-import Data.ByteString.Lazy.Internal as ByteString
-import Data.Functor ((<&>))
-import Data.Typeable (Typeable)
-import Data.Hashable (Hashable, hashWithSalt)
-import Data.Aeson as Json
-import Data.Aeson.Types as Json
-import Data.Aeson (ToJSON, toJSON, FromJSON, parseJSON)
-
 import qualified Database.MongoDB as Mongo
-import Control.Monad (mzero)
 
 newtype Id a = Id UUID
   deriving (Eq, Ord, Typeable)
 
-new :: IO (Id a)
-new = Id <$> nextRandom
+make :: IO (Id a)
+make = Id <$> nextRandom
 
 instance Hashable (Id a) where
   hashWithSalt i (Id uuid) = hashWithSalt i uuid

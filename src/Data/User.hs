@@ -2,7 +2,6 @@
 
 module Data.User
   ( User (User, id, name)
-  , new
   , make
   , isPassword
   )
@@ -22,11 +21,11 @@ data User = User
   , password :: Text
   } deriving (Show)
 
-new :: Id User -> Text -> Text -> User
-new i n p = User { Data.User.id = i, name = n, password = p }
+new :: Text -> Text -> Id User -> User
+new n p i = User { Data.User.id = i, name = n, password = p }
 
 make :: Text -> Text -> IO User
-make n p = (\i -> new i n p) <$> Id.new
+make n p = new n p <$> Id.make
 
 isPassword :: Text -> User -> Bool
 isPassword t u = t == password u

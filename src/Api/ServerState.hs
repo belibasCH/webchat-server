@@ -1,48 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Api.ServerState
-  ( ServerState
+  ( ServerState (..)
+  , Client (..)
   , make
   , addClient
   , removeClient
-  , listUsers
-  , saveUser
-  , findUserByName
-  , findMessage
-  , listMessages
-  , saveMessage
   , sendMessage
-  , listUnreceivedMessages
   )
 where
 
-import Data.HashMap as Map
-import Control.Monad (mapM_)
-
+import Api.Action
+import Api.ServerMsg
+import Data.Id (Id)
 import Data.Message (Message)
+import Data.Text (Text)
+import Api.ServerState.Type
+import Data.User (User)
+import Data.Maybe (fromMaybe)
+import qualified Data.List as List
+import qualified Data.HashMap as Map
 import qualified Data.Message as Message
-
-import Api.Client (Client)
-import qualified Api.Client as Client
-
 import qualified Db.Conn as Db
 import qualified Db.Repo as Db
+import qualified Network.WebSockets as WS
 
-import Api.Answer
-import qualified Data.List as List
-import Data.Text (Text)
-import Data.Id (Id)
-import Data.User (User)
-import Result
-
-data ServerState = ServerState
-  { clients :: Map (Id Client) Client
-  , users :: Db.Repo User
-  , messages :: Db.Repo Message
-  }
-  
 -- TODO close db
-  
+
 make :: IO ServerState
 make = do
   db <- Db.connect
@@ -53,34 +37,22 @@ make = do
     }
 
 addClient :: Client -> ServerState -> ServerState
-addClient c s = s { clients = Map.insert (Client.id c) c (clients s) }
+addClient c s =
+  s { clients = Map.insert (clientId c) c (clients s) }
+  where
+    clientId :: Client -> Id Client
+    clientId (Client i _ _) = i
 
 removeClient :: Id Client -> ServerState -> ServerState
 removeClient cId s = s { clients = Map.delete cId (clients s) }
 
-
-findUserByName :: Text -> ServerState -> ResultT IO (Maybe User)
-findUserByName n s = wrap $ Db.findUserByName n (users s)
-
-listUsers :: ServerState -> ResultT IO [User]
-listUsers s = wrap $ Db.list (users s)
-
-saveUser :: User -> ServerState -> ResultT IO ()
-saveUser u s = wrap $ Db.save u (users s)
-
-findMessage :: Id Message -> ServerState -> ResultT IO (Maybe Message)
-findMessage msgId s = wrap $ Db.find msgId (messages s)
-
-listMessages :: Id User -> Id User -> ServerState -> ResultT IO [Message]
-listMessages uId1 uId2 s = wrap $ Db.listMessages uId1 uId2 (messages s)
-
-saveMessage :: Message -> ServerState -> ResultT IO ()
-saveMessage msg s = wrap $ Db.save msg (messages s)
-
-sendMessage :: Message -> ServerState -> ResultT IO ()
+sendMessage :: Message -> ServerState -> Action ()
 sendMessage msg s = do
-  let cs = flip List.filter (Map.elems (clients s)) $ \c -> Client.userId c == Message.receiverId msg
-  mapM_ (Client.send (Receive msg)) cs
+  let cs = flip List.filter (Map.elems (clients s)) $ \c -> userId c == Message.receiverId msg
+  liftIO $ mapM_ (\c -> WS.sendTextData (conn c) $ toJson (Receive msg)) cs
+  where
+    userId :: Client -> Id User
+    userId (Client _ i _) = i
 
-listUnreceivedMessages :: Id User -> ServerState -> ResultT IO [Message]
-listUnreceivedMessages recId s = wrap $ Db.listUnreceivedMessages recId (messages s)
+    conn :: Client -> WS.Connection
+    conn (Client _ _ c) = c
