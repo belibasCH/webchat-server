@@ -47,6 +47,7 @@ application fs pending = do
   where
     initializeClient :: User -> Action (Id Client)
     initializeClient u = do
+      readState >>= ServerState.broadcast (UserLoggedIn u)
       cId <- liftIO Id.make
       conn <- readConn
       modifyState $ pure . ServerState.addClient (Client cId (User.id u) conn)
@@ -64,6 +65,7 @@ talk u cId = loop $
     disconnect :: Action ()
     disconnect = do
       modifyState $ pure . ServerState.removeClient cId
+      readState >>= ServerState.broadcast (UserLoggedOut u)
 
 handleClientMsg :: User -> ClientMsg -> Action ()
 handleClientMsg _ (Login _ _) = failWith (BadRequest "already logged in")
@@ -97,7 +99,11 @@ handleClientMsg u (Read msgId) = do
     
 handleClientMsg _ LoadUsers = do
   us <- runIO $ Db.list <$> readUsers
-  send (UsersLoaded us)
+  is <- mapM makeItem us
+  send (UsersLoaded is)
+  where
+    makeItem :: User -> Action UserItem
+    makeItem u = readState >>= \s -> pure (u, ServerState.isOnline (User.id u) s)
 
 handleClientMsg u LoadChats = do
   ms <- runIO $ Db.list <$> readUsers
@@ -127,8 +133,8 @@ handleUnprotectedClientMsg (CreateUser un pw) = do
   when (Text.null pw') $ failWith BlankPassword
   u <- liftIO $ User.make un pw'
   runIO $ Db.save u <$> readUsers
-  send (UserCreated u)
-  pure ()
+  ServerState.broadcast (UserCreated u) =<< readState
+  pure () 
   where
     isDuplicate :: Action Bool
     isDuplicate = runIO $ Db.existsUserByName un <$> readUsers

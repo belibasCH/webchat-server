@@ -6,7 +6,9 @@ module Api.ServerState
   , make
   , addClient
   , removeClient
+  , broadcast
   , sendMessage
+  , isOnline
   )
 where
 
@@ -16,6 +18,7 @@ import Data.Id (Id)
 import Data.Message (Message)
 import Api.ServerState.Type
 import Data.User (User)
+import Data.Aeson (ToJSON)
 import qualified Data.List as List
 import qualified Data.HashMap as Map
 import qualified Data.Message as Message
@@ -44,13 +47,20 @@ addClient c s =
 removeClient :: Id Client -> ServerState -> ServerState
 removeClient cId s = s { clients = Map.delete cId (clients s) }
 
+broadcast :: ToJSON a => a -> ServerState -> Action ()
+broadcast a s = liftIO $ mapM_ (\c -> WS.sendTextData (conn c) $ toJson a) (clients s)
+
 sendMessage :: Message -> ServerState -> Action ()
 sendMessage msg s = do
   let cs = flip List.filter (Map.elems (clients s)) $ \c -> userId c == Message.receiverId msg
   liftIO $ mapM_ (\c -> WS.sendTextData (conn c) $ toJson (Receive msg)) cs
-  where
-    userId :: Client -> Id User
-    userId (Client _ i _) = i
 
-    conn :: Client -> WS.Connection
-    conn (Client _ _ c) = c
+isOnline :: Id User -> ServerState -> Bool
+isOnline uId s = List.any (\c -> userId c == uId) (Map.elems (clients s))
+
+userId :: Client -> Id User
+userId (Client _ i _) = i
+      
+conn :: Client -> WS.Connection
+conn (Client _ _ c) = c
+  
