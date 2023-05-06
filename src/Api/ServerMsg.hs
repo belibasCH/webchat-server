@@ -26,6 +26,8 @@ data ServerMsg
   | UserDeleted (Id User)
   | Sent Message
   | Receive Message
+  | MessageReceived (Id Message)
+  | MessageRead (Id Message)
   | UsersLoaded [UserItem]
   | ChatsLoaded [ChatItem]
   | ChatLoaded [Message]
@@ -78,6 +80,16 @@ instance ToJSON ServerMsg where
   toJSON (Receive msg) = Json.object $
     ( "type" .= ("receive_message" :: Text)
     ) : jsonMessage msg
+
+  toJSON (MessageReceived msgId) = Json.object
+    [ "type" .= ("received_message" :: Text)
+    , "message_id" .= msgId
+    ]
+    
+  toJSON (MessageRead msgId) = Json.object
+    [ "type" .= ("read_message" :: Text)
+    , "message_id" .= msgId
+    ]
 
   toJSON (UsersLoaded us) = Json.object
     [ "type" .= ("users_loaded" :: Text)

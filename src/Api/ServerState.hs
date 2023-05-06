@@ -7,6 +7,7 @@ module Api.ServerState
   , addClient
   , removeClient
   , broadcast
+  , sendToUser
   , sendMessage
   , isOnline
   )
@@ -50,10 +51,13 @@ removeClient cId s = s { clients = Map.delete cId (clients s) }
 broadcast :: ToJSON a => a -> ServerState -> Action ()
 broadcast a s = liftIO $ mapM_ (\c -> WS.sendTextData (conn c) $ toJson a) (clients s)
 
+sendToUser :: ToJSON a => Id User -> a -> ServerState -> Action ()
+sendToUser a uId s = do
+  let cs = flip List.filter (Map.elems (clients s)) $ \c -> userId c == uId
+  liftIO $ mapM_ (\c -> WS.sendTextData (conn c) $ toJson a) cs
+
 sendMessage :: Message -> ServerState -> Action ()
-sendMessage msg s = do
-  let cs = flip List.filter (Map.elems (clients s)) $ \c -> userId c == Message.receiverId msg
-  liftIO $ mapM_ (\c -> WS.sendTextData (conn c) $ toJson (Receive msg)) cs
+sendMessage msg s = sendToUser (Message.receiverId msg) (Receive msg)
 
 isOnline :: Id User -> ServerState -> Bool
 isOnline uId s = List.any (\c -> userId c == uId) (Map.elems (clients s))

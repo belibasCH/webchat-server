@@ -105,22 +105,23 @@ handleClientMsg uId (Send t recId) = do
   runIO $ Db.save msg <$> readMessages
   ServerState.sendMessage msg =<< readState
   send (Sent msg)
-  
   where
     receiverExists :: Action Bool
     receiverExists = runIO $ Db.exists recId <$> readUsers
 
 handleClientMsg uId (Received msgId) = do
   now <- liftIO Time.getCurrentTime
-  unlessM
+  msg <- whenNothingM
     (runIO $ Db.updateMessageReceivedAt now uId msgId <$> readMessages)
     (failWith $ MessageNotFound msgId)
+  ServerState.sendToUser (Message.senderId msg) (MessageReceived msgId) =<< readState
 
 handleClientMsg uId (Read msgId) = do
   now <- liftIO Time.getCurrentTime
-  unlessM
+  msg <- whenNothingM
     (runIO $ Db.updateMessageReadAt now uId msgId <$> readMessages)
     (failWith $ MessageNotFound msgId)
+  ServerState.sendToUser (Message.senderId msg) (MessageRead msgId) =<< readState
 
 handleClientMsg _ LoadUsers = do
   us <- runIO $ Db.list <$> readUsers

@@ -113,23 +113,23 @@ countUnreadChatMessages :: Id User -> Id User -> Repo Message -> IO Int
 countUnreadChatMessages sendId recId (Repo col conn) = Db.run conn $
   Mongo.count (Mongo.select ["sender_id" =: sendId, "receiver_id" =: recId, "read_at" =: Mongo.Null] col)
 
-updateMessageReceivedAt :: UTCTime -> Id User -> Id Message -> Repo Message -> IO Bool
+updateMessageReceivedAt :: UTCTime -> Id User -> Id Message -> Repo Message -> IO (Maybe Message)
 updateMessageReceivedAt at recId msgId (Repo col conn) = Db.run conn $ do
   doc <- Mongo.findAndModify
     (Mongo.select ["_id" =: msgId, "receiver_id" =: recId] col)
     ["$set" =: ["received_at" =: at]]
   pure $ case doc of
-    Left _ -> False
-    Right _ -> True
+    Left _ -> Nothing
+    Right msg -> Just (Db.read msg)
 
-updateMessageReadAt :: UTCTime -> Id User -> Id Message -> Repo Message -> IO Bool
+updateMessageReadAt :: UTCTime -> Id User -> Id Message -> Repo Message -> IO (Maybe Message)
 updateMessageReadAt at recId msgId (Repo col conn) = Db.run conn $ do
   doc <- Mongo.findAndModify
     (Mongo.select ["_id" =: msgId, "receiver_id" =: recId] col)
     ["$set" =: ["read_at" =: at]]
   pure $ case doc of
-    Left _ -> False
-    Right _ -> True
+    Left _ -> Nothing
+    Right msg -> Just (Db.read msg)
 
 chatMessageQuery :: Id User -> Id User -> Mongo.Collection -> Mongo.Query
 chatMessageQuery uId1 uId2 = Mongo.select
