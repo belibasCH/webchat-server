@@ -27,8 +27,8 @@ data ServerMsg
   | UserDeleted (Id User)
   | Sent Message
   | Receive Message
-  | MessageReceived (Id Message)
-  | MessageRead (Id Message)
+  | MessageReceived Message
+  | MessageRead Message
   | UsersLoaded [UserItem]
   | ChatsLoaded [ChatItem]
   | ChatLoaded [Message]
@@ -78,22 +78,23 @@ instance ToJSON ServerMsg where
     , "user_id" .= uId
     ]
 
-  toJSON (Sent msg) = Json.object $
-    ( "type" .= ("message_sent" :: Text)
-    ) : jsonMessage msg
+  toJSON (Sent msg) = Json.object
+    [ "type"    .= ("message_sent" :: Text)
+    , "message" .= Json.object (jsonMessage msg)
+    ]
 
   toJSON (Receive msg) = Json.object $
     ( "type" .= ("receive_message" :: Text)
     ) : jsonMessage msg
 
-  toJSON (MessageReceived msgId) = Json.object
-    [ "type" .= ("received_message" :: Text)
-    , "message_id" .= msgId
+  toJSON (MessageReceived msg) = Json.object
+    [ "type" .= ("message_received" :: Text)
+    , "message" .= Json.object (jsonMessage msg)
     ]
     
-  toJSON (MessageRead msgId) = Json.object
-    [ "type" .= ("read_message" :: Text)
-    , "message_id" .= msgId
+  toJSON (MessageRead msg) = Json.object
+    [ "type" .= ("message_read" :: Text)
+    , "message" .= Json.object (jsonMessage msg)
     ]
 
   toJSON (UsersLoaded us) = Json.object
@@ -133,4 +134,6 @@ jsonMessage msg =
   , "receiver_id" .= Message.receiverId msg
   , "text" .= Message.text msg
   , "sent_at" .= Message.sentAt msg
+  , "received_at" .= Message.receivedAt msg
+  , "read_at" .= Message.readAt msg
   ]

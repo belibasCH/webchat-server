@@ -126,14 +126,14 @@ handleClientMsg uId (Received msgId) = do
   msg <- whenNothingM
     (runIO $ Db.updateMessageReceivedAt now uId msgId <$> readMessages)
     (failWith $ MessageNotFound msgId)
-  ServerState.sendToUser (Message.senderId msg) (MessageReceived msgId) =<< readState
+  ServerState.sendToUser (Message.senderId msg) (MessageReceived msg) =<< readState
 
 handleClientMsg uId (Read msgId) = do
   now <- liftIO Time.getCurrentTime
   msg <- whenNothingM
     (runIO $ Db.updateMessageReadAt now uId msgId <$> readMessages)
     (failWith $ MessageNotFound msgId)
-  ServerState.sendToUser (Message.senderId msg) (MessageRead msgId) =<< readState
+  ServerState.sendToUser (Message.senderId msg) (MessageRead msg) =<< readState
 
 handleClientMsg _ LoadUsers = do
   us <- runIO $ Db.list <$> readUsers
