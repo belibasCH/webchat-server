@@ -32,7 +32,6 @@ data ServerMsg
   | UsersLoaded [UserItem]
   | ChatsLoaded [ChatItem]
   | ChatLoaded [Message]
-  | ConnectionClosed
   deriving (Show)
 
 type UserItem = (User, IsOnline)
@@ -93,20 +92,23 @@ instance ToJSON ServerMsg where
     ]
     
   toJSON (MessageRead msg) = Json.object
-    [ "type" .= ("message_read" :: Text)
+    [ "type"    .= ("message_read" :: Text)
     , "message" .= Json.object (jsonMessage msg)
     ]
 
   toJSON (UsersLoaded us) = Json.object
-    [ "type" .= ("users_loaded" :: Text)
-    , "users" .= toJSONList (us <&> \(u, o) -> Json.object $ ("is_online" .= o) : jsonUser u)
+    [ "type"  .= ("users_loaded" :: Text)
+    , "users" .= toJSONList (us <&> \(u, o) -> Json.object
+      [ "user"      .= Json.object (jsonUser u)
+      , "is_online" .= o
+      ])
     ]
 
   toJSON (ChatsLoaded is) = Json.object
     [ "type" .= ("chats_loaded" :: Text)
     , "chats" .= toJSONList (is <&> \(u, msg, nt, nu) -> Json.object
       [ "user_id" .= User.id u
-      , "last_message" .= Json.object (jsonMessage msg)
+      , "latest_message" .= Json.object (jsonMessage msg)
       , "total_message_count" .= nt
       , "unread_message_count" .= nu
       ])
@@ -115,10 +117,6 @@ instance ToJSON ServerMsg where
   toJSON (ChatLoaded msgs) = Json.object
     [ "type" .= ("chat_loaded" :: Text)
     , "messages" .= toJSONList (msgs <&> Json.object . jsonMessage)
-    ]
-
-  toJSON ConnectionClosed = Json.object
-    [ "type" .= ("connection_closed" :: Text)
     ]
 
 jsonUser :: User -> [(Json.Key, Json.Value)]
