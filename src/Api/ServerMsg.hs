@@ -23,6 +23,7 @@ data ServerMsg
   | UserLoggedOut (Id User)
   | UserCreated User
   | UsernameChanged User
+  | PasswordChanged
   | UserDeleted (Id User)
   | Sent Message
   | Receive Message
@@ -66,6 +67,10 @@ instance ToJSON ServerMsg where
   toJSON (UsernameChanged u) = Json.object
     [ "type" .= ("username_changed" :: Text)
     , "user" .= Json.object (jsonUser u)
+    ]
+
+  toJSON PasswordChanged = Json.object
+    [ "type" .= ("password_changed" :: Text)
     ]
 
   toJSON (UserDeleted uId) = Json.object

@@ -76,11 +76,18 @@ handleClientMsg :: Id User -> ClientMsg -> Action ()
 handleClientMsg _ (Login _ _) = failWith (BadRequest "already logged in")
 
 handleClientMsg uId (ChangeUsername un) = do
-  handleDuplicateUsername un
-  u' <- whenNothingM
-    (runIO $ Db.updateUserName un uId <$> readUsers)
+  un' <- requireValidUsername un
+  u'  <- whenNothingM
+    (runIO $ Db.updateUserName un' uId <$> readUsers)
     (error "current user missing in database")
   ServerState.broadcast (UsernameChanged u') =<< readState
+
+handleClientMsg uId (ChangePassword pw) = do
+  pw' <- requireValidPassword pw
+  _   <- whenNothingM
+    (runIO $ Db.updateUserPassword pw' uId <$> readUsers)
+    (error "current user missing in database")
+  send PasswordChanged
 
 handleClientMsg uId DeleteUser = do
   unlessM
@@ -160,22 +167,28 @@ handleClientMsg _ (Unprotected um) = handleUnprotectedClientMsg um
 
 handleUnprotectedClientMsg :: UnprotectedClientMsg -> Action ()
 handleUnprotectedClientMsg (CreateUser un pw) = do
-  handleDuplicateUsername un
-  let pw' = Text.strip pw
-  when (Text.null pw') $ failWith BlankPassword
-  u <- liftIO $ User.make un pw'
+  un' <- requireValidUsername un
+  pw' <- requireValidPassword pw
+  u <- liftIO $ User.make un' pw'
   runIO $ Db.save u <$> readUsers
   send (UserCreated u)
   ServerState.broadcast (UserCreated u) =<< readState
   pure ()
 
-handleDuplicateUsername :: Text -> Action ()
-handleDuplicateUsername un =
+requireValidUsername :: Text -> Action Text
+requireValidUsername un = do
   whenM isDuplicate $ failWith (UsernameTaken un)
+  pure un
   where
     isDuplicate :: Action Bool
     isDuplicate = runIO $ Db.existsUserByName un <$> readUsers
-  
+
+requireValidPassword :: Text -> Action Text
+requireValidPassword pw = do
+  let pw' = Text.strip pw
+  when (Text.null pw') $ failWith BlankPassword
+  pure pw'
+
 login :: Text -> Text -> Action (Id User)
 login un pw = do
   u <- runIO (Db.findUserByName un <$> readUsers) & (`whenNothingM` (failWith $ LoginFailed un))
