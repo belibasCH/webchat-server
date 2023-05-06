@@ -158,6 +158,7 @@ handleUnprotectedClientMsg (CreateUser un pw) = do
   when (Text.null pw') $ failWith BlankPassword
   u <- liftIO $ User.make un pw'
   runIO $ Db.save u <$> readUsers
+  send (UserCreated u)
   ServerState.broadcast (UserCreated u) =<< readState
   pure ()
   where
