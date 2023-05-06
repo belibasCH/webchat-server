@@ -116,7 +116,7 @@ handleClientMsg uId (Send t recId) = do
      }
   runIO $ Db.save msg <$> readMessages
   ServerState.sendMessage msg =<< readState
-  send (Sent msg)
+  ServerState.sendToUser uId (Sent msg) =<< readState
   where
     receiverExists :: Action Bool
     receiverExists = runIO $ Db.exists recId <$> readUsers
