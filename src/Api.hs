@@ -83,12 +83,18 @@ handleClientMsg u (Send t recId) = do
   ServerState.sendMessage msg =<< readState
   send (Sent msg)
 
-handleClientMsg _ (Received msgId) = do
+handleClientMsg u (Received msgId) = do
   now <- liftIO Time.getCurrentTime
   unlessM
-    (runIO $ Db.updateMessageReceivedAt now msgId <$> readMessages)
+    (runIO $ Db.updateMessageReceivedAt now (User.id u) msgId <$> readMessages)
     (failWith $ MessageNotFound msgId)
 
+handleClientMsg u (Read msgId) = do
+  now <- liftIO Time.getCurrentTime
+  unlessM
+    (runIO $ Db.updateMessageReadAt now (User.id u) msgId <$> readMessages)
+    (failWith $ MessageNotFound msgId)
+    
 handleClientMsg _ LoadUsers = do
   us <- runIO $ Db.list <$> readUsers
   send (UsersLoaded us)
@@ -101,10 +107,12 @@ handleClientMsg u LoadChats = do
     loadChat :: User -> Action (Maybe ChatItem)
     loadChat u2 = do
       msgs <- readMessages
-      mm <- liftIO $ Db.findLatestChatMessage (User.id u) (User.id u2) msgs
-      nt <- liftIO $ Db.countTotalChatMessages (User.id u) (User.id u2) msgs
-      nu <- liftIO $ Db.countUnreadChatMessages (User.id u2) (User.id u) msgs
-      pure $ mm <&> (u2, , nt, nu)
+      liftIO $ do
+        mm <- Db.findLatestChatMessage (User.id u) (User.id u2) msgs
+        nt <- Db.countTotalChatMessages (User.id u) (User.id u2) msgs
+        nu <- Db.countUnreadChatMessages (User.id u2) (User.id u) msgs
+        pure $ mm <&> (u2, , nt, nu)
+      
 
 handleClientMsg u (LoadChat uId) = do
   is <- runIO $ Db.listChatMessages uId (User.id u) <$> readMessages

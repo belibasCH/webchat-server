@@ -14,6 +14,7 @@ module Db.Repo
   , countTotalChatMessages
   , countUnreadChatMessages
   , updateMessageReceivedAt
+  , updateMessageReadAt
   )
 where
 
@@ -76,20 +77,29 @@ findLatestChatMessage :: Id User -> Id User -> Repo Message -> IO (Maybe Message
 findLatestChatMessage uId1 uId2 (Repo col conn) = Db.run conn $ do
   doc <- Mongo.findOne (chatMessageQuery uId1 uId2 col) { Mongo.sort = Db.order Db.desc ([] :: [Message]) }
   pure $ doc <&> Db.read
-  
+
 countTotalChatMessages :: Id User -> Id User -> Repo Message -> IO Int
 countTotalChatMessages uId1 uId2 (Repo col conn) = Db.run conn $
   Mongo.count (chatMessageQuery uId1 uId2 col)
-  
+
 countUnreadChatMessages :: Id User -> Id User -> Repo Message -> IO Int
 countUnreadChatMessages sendId recId (Repo col conn) = Db.run conn $
   Mongo.count (Mongo.select ["sender_id" =: sendId, "receiver_id" =: recId, "read_at" =: Mongo.Null] col)
-  
-updateMessageReceivedAt :: UTCTime -> Id Message -> Repo Message -> IO Bool
-updateMessageReceivedAt recAt msgId (Repo col conn) = Db.run conn $ do
+
+updateMessageReceivedAt :: UTCTime -> Id User -> Id Message -> Repo Message -> IO Bool
+updateMessageReceivedAt at recId msgId (Repo col conn) = Db.run conn $ do
   doc <- Mongo.findAndModify
-    (Mongo.select ["_id" =: msgId] col)
-    ["$set" =: ["received_at" =: recAt]]
+    (Mongo.select ["_id" =: msgId, "receiver_id" =: recId] col)
+    ["$set" =: ["received_at" =: at]]
+  pure $ case doc of
+    Left _ -> False
+    Right _ -> True
+
+updateMessageReadAt :: UTCTime -> Id User -> Id Message -> Repo Message -> IO Bool
+updateMessageReadAt at recId msgId (Repo col conn) = Db.run conn $ do
+  doc <- Mongo.findAndModify
+    (Mongo.select ["_id" =: msgId, "receiver_id" =: recId] col)
+    ["$set" =: ["read_at" =: at]]
   pure $ case doc of
     Left _ -> False
     Right _ -> True

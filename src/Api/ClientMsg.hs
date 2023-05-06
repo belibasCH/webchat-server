@@ -22,6 +22,7 @@ import qualified Network.WebSockets as WS
 data ClientMsg
   = Send Text (Id User)
   | Received (Id Message)
+  | Read (Id Message)
   | LoadUsers
   | LoadChats
   | LoadChat (Id User)
@@ -47,6 +48,7 @@ instance FromJSON ClientMsg where
       "create_user" -> Unprotected <$> (CreateUser <$> o .: "username" <*> o .: "password")
       "send" -> Send <$> o .: "text" <*> o .: "receiver_id"
       "received" -> Received <$> o .: "message_id"
+      "read" -> Read <$> o .: "message_id"
       "load_users" -> pure LoadUsers
       "load_chats" -> pure LoadChats
       "load_chat" -> LoadChat <$> o .: "user_id"
