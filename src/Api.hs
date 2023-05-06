@@ -52,12 +52,14 @@ application fs pending = do
 
     initializeClient :: Id User -> Action (Id Client)
     initializeClient uId = do
-      readState >>= ServerState.broadcast (UserLoggedIn uId)
+      ss <- readState
+      when (ServerState.countClients uId ss == 0)
+        (ServerState.broadcast (UserLoggedIn uId) ss)
       cId <- liftIO Id.make
       conn <- readConn
       modifyState $ pure . ServerState.addClient (Client cId uId conn)
-      ss <- readState
-      mapM_ (`ServerState.sendMessage` ss) =<< runIO (Db.listUnreceivedMessages uId <$> readMessages)
+      ss' <- readState
+      mapM_ (`ServerState.sendMessage` ss') =<< runIO (Db.listUnreceivedMessages uId <$> readMessages)
       pure cId
 
 talk :: Id User -> Id Client -> Action ()
@@ -70,7 +72,9 @@ talk uId cId = loop $
     disconnect :: Action ()
     disconnect = do
       modifyState $ pure . ServerState.removeClient cId
-      readState >>= ServerState.broadcast (UserLoggedOut uId)
+      ss <- readState
+      when (ServerState.countClients uId ss == 0)
+        (readState >>= ServerState.broadcast (UserLoggedOut uId))
 
 handleClientMsg :: Id User -> ClientMsg -> Action ()
 handleClientMsg _ (Login _ _) = failWith (BadRequest "already logged in")

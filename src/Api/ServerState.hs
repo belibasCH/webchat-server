@@ -6,6 +6,7 @@ module Api.ServerState
   , make
   , addClient
   , removeClient
+  , countClients
   , broadcast
   , sendToUser
   , sendMessage
@@ -48,16 +49,19 @@ addClient c s =
 removeClient :: Id Client -> ServerState -> ServerState
 removeClient cId s = s { clients = Map.delete cId (clients s) }
 
+countClients :: Id User -> ServerState -> Int
+countClients uId s = length (flip List.filter (Map.elems (clients s)) $ \c -> userId c == uId)
+
 broadcast :: ToJSON a => a -> ServerState -> Action ()
 broadcast a s = liftIO $ mapM_ (\c -> WS.sendTextData (conn c) $ toJson a) (clients s)
 
 sendToUser :: ToJSON a => Id User -> a -> ServerState -> Action ()
-sendToUser a uId s = do
+sendToUser uId a s = do
   let cs = flip List.filter (Map.elems (clients s)) $ \c -> userId c == uId
   liftIO $ mapM_ (\c -> WS.sendTextData (conn c) $ toJson a) cs
 
 sendMessage :: Message -> ServerState -> Action ()
-sendMessage msg s = sendToUser (Message.receiverId msg) (Receive msg)
+sendMessage msg = sendToUser (Message.receiverId msg) (Receive msg)
 
 isOnline :: Id User -> ServerState -> Bool
 isOnline uId s = List.any (\c -> userId c == uId) (Map.elems (clients s))
