@@ -23,11 +23,13 @@ data ServerMsg
   | UserLoggedOut (Id User)
   | UserCreated User
   | UserNameChanged User
+  | UserDeleted (Id User)
   | Sent Message
   | Receive Message
   | UsersLoaded [UserItem]
   | ChatsLoaded [ChatItem]
   | ChatLoaded [Message]
+  | ConnectionClosed
   deriving (Show)
 
 type UserItem = (User, IsOnline)
@@ -43,12 +45,12 @@ instance ToJSON ServerMsg where
     [ "type" .= ("login_succeeded" :: Text)
     , "user" .= Json.object (jsonUser u)
     ]
-    
+
   toJSON (UserLoggedIn uId) = Json.object
     [ "type" .= ("user_logged_in" :: Text)
     , "user_id" .= uId
     ]
-    
+
   toJSON (UserLoggedOut uId) = Json.object
     [ "type" .= ("user_logged_out" :: Text)
     , "user_id" .= uId
@@ -58,10 +60,15 @@ instance ToJSON ServerMsg where
     [ "type" .= ("user_created" :: Text)
     , "user" .= Json.object (jsonUser u)
     ]
-    
+
   toJSON (UserNameChanged u) = Json.object
     [ "type" .= ("user_name_changed" :: Text)
     , "user" .= Json.object (jsonUser u)
+    ]
+
+  toJSON (UserDeleted uId) = Json.object
+    [ "type" .= ("user_deleted" :: Text)
+    , "user_id" .= uId
     ]
 
   toJSON (Sent msg) = Json.object $
@@ -92,12 +99,16 @@ instance ToJSON ServerMsg where
     , "messages" .= toJSONList (msgs <&> Json.object . jsonMessage)
     ]
 
+  toJSON ConnectionClosed = Json.object
+    [ "type" .= ("connection_closed" :: Text)
+    ]
+
 jsonUser :: User -> [(Json.Key, Json.Value)]
 jsonUser u =
   [ "id" .= User.id u
   , "name" .= User.name u
   ]
-      
+
 jsonMessage :: Message -> [(Json.Key, Json.Value)]
 jsonMessage msg =
   [ "id" .= Message.id msg

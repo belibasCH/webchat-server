@@ -12,6 +12,7 @@ import Api.ClientMsg
 import Api.ServerMsg
 import Api.ServerState as ServerState
 import Control.Concurrent (newMVar)
+import Control.Exception (throwIO)
 import Control.Monad (forever, when, unless)
 import Data.Function ((&))
 import Data.Functor ((<&>))
@@ -38,13 +39,17 @@ run = do
 application :: (WS.Connection -> ActionState) -> WS.ServerApp
 application fs pending = do
   conn <- WS.acceptRequest pending
-  WS.withPingThread conn 30 mempty $ runAction (fs conn) $
-    readConn >>= receiveClientMsg >>= \case
-      Login un pw -> login un pw >>= \uId -> initializeClient uId >>= talk uId
-      Unprotected um -> handleUnprotectedClientMsg um
-      _ -> failWith (BadRequest "this message type requires authentication")
-
+  WS.withPingThread conn 30 mempty $ runAction (fs conn) talkUnauthorized
   where
+    talkUnauthorized :: Action ()
+    talkUnauthorized =
+      readConn >>= receiveClientMsg >>= \case
+        Login un pw -> login un pw >>= \uId -> initializeClient uId >>= talk uId
+        Unprotected um -> do
+          runNestedAction (handleUnprotectedClientMsg um)
+          talkUnauthorized
+        _ -> failWith (BadRequest "this message type requires authentication")
+          
     initializeClient :: Id User -> Action (Id Client)
     initializeClient uId = do
       readState >>= ServerState.broadcast (UserLoggedIn uId)
@@ -75,6 +80,14 @@ handleClientMsg uId (RenameUser un) = do
     (runIO $ Db.updateUserName un uId <$> readUsers)
     (error "current user missing in database")
   ServerState.broadcast (UserNameChanged u') =<< readState
+
+handleClientMsg uId DeleteUser = do
+  unlessM
+    (runIO $ Db.delete uId <$> readUsers)
+    (error "current user missing in database")
+  runIO $ Db.deleteMessagesOfUser uId <$> readMessages
+  ServerState.broadcast (UserDeleted uId) =<< readState
+  liftIO $ throwIO (WS.CloseRequest 1000 "user deleted")
 
 handleClientMsg uId (Send t recId) = do
   msgId <- liftIO Id.make

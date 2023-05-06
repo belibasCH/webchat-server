@@ -27,6 +27,7 @@ data ClientMsg
   | LoadChats
   | LoadChat (Id User)
   | RenameUser Text
+  | DeleteUser
     
   -- | Attempt to authenticate with the given username and password.
   -- | This message is only usable when the current connection is not yet logged in.
@@ -53,6 +54,7 @@ instance FromJSON ClientMsg where
       "load_chat" -> LoadChat <$> o .: "user_id"
       "login" -> Login <$> o .: "username" <*> o .: "password"
       "rename_user" -> RenameUser <$> o .: "username"
+      "delete_user" -> pure DeleteUser
       "create_user" -> Unprotected <$> (CreateUser <$> o .: "username" <*> o .: "password")
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")
 

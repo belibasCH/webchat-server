@@ -6,6 +6,7 @@ module Db.Repo
   , save
   , list
   , find
+  , delete
   , findUserByName
   , existsUserByName
   , updateUserName
@@ -16,6 +17,7 @@ module Db.Repo
   , countUnreadChatMessages
   , updateMessageReceivedAt
   , updateMessageReadAt
+  , deleteMessagesOfUser
   )
 where
 
@@ -46,6 +48,15 @@ find :: Typeable a => Db.Read a => Id a -> Repo a -> IO (Maybe a)
 find aId (Repo col conn) = Db.run conn $ do
   doc <- Mongo.findOne (Mongo.select ["_id" =: aId] col)
   pure $ doc <&> Db.read
+
+delete :: Typeable a => Id a -> Repo a -> IO Bool
+delete aId (Repo col conn) = Db.run conn $ do
+  n <- Mongo.count (Mongo.select ["_id" =: aId] col)
+  if n == 0
+    then pure False
+    else do
+      Mongo.deleteOne (Mongo.select ["_id" =: aId] col)
+      pure True
 
 findUserByName :: Text -> Repo User -> IO (Maybe User)
 findUserByName un (Repo col conn) = Db.run conn $ do
@@ -121,3 +132,8 @@ chatMessageQuery uId1 uId2 = Mongo.select
     , ["sender_id" =: uId2, "receiver_id" =: uId1]
     ]
   ]
+
+deleteMessagesOfUser :: Id User -> Repo Message -> IO ()
+deleteMessagesOfUser uId (Repo col conn) = Db.run conn $ do
+  let q = Mongo.select ["$or" =: [["sender_id" =: uId], ["receiver_id" =: uId]]]
+  Mongo.delete (q col)
