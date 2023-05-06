@@ -12,15 +12,17 @@ import Data.Functor ((<&>))
 import Data.Message (Message)
 import Data.Text (Text)
 import Data.User (User)
+import Data.Id (Id)
 import qualified Data.Aeson as Json
 import qualified Data.Message as Message
 import qualified Data.User as User
 
 data ServerMsg
   = LoginSucceeded User
-  | UserLoggedIn User
-  | UserLoggedOut User
+  | UserLoggedIn (Id User)
+  | UserLoggedOut (Id User)
   | UserCreated User
+  | UserNameChanged User
   | Sent Message
   | Receive Message
   | UsersLoaded [UserItem]
@@ -42,20 +44,24 @@ instance ToJSON ServerMsg where
     , "user" .= Json.object (jsonUser u)
     ]
     
-  toJSON (UserLoggedIn u) = Json.object
+  toJSON (UserLoggedIn uId) = Json.object
     [ "type" .= ("user_logged_in" :: Text)
-    , "user_id" .= User.id u
+    , "user_id" .= uId
     ]
     
-  toJSON (UserLoggedOut u) = Json.object
+  toJSON (UserLoggedOut uId) = Json.object
     [ "type" .= ("user_logged_out" :: Text)
-    , "user_id" .= User.id u
+    , "user_id" .= uId
     ]
     
   toJSON (UserCreated u) = Json.object
     [ "type" .= ("user_created" :: Text)
-    , "id" .= User.id u
-    , "name" .= User.name u
+    , "user" .= Json.object (jsonUser u)
+    ]
+    
+  toJSON (UserNameChanged u) = Json.object
+    [ "type" .= ("user_name_changed" :: Text)
+    , "user" .= Json.object (jsonUser u)
     ]
 
   toJSON (Sent msg) = Json.object $

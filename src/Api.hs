@@ -40,24 +40,24 @@ application fs pending = do
   conn <- WS.acceptRequest pending
   WS.withPingThread conn 30 mempty $ runAction (fs conn) $
     readConn >>= receiveClientMsg >>= \case
-      Login un pw -> login un pw >>= \u -> initializeClient u >>= talk u
+      Login un pw -> login un pw >>= \uId -> initializeClient uId >>= talk uId
       Unprotected um -> handleUnprotectedClientMsg um
       _ -> failWith (BadRequest "this message type requires authentication")
 
   where
-    initializeClient :: User -> Action (Id Client)
-    initializeClient u = do
-      readState >>= ServerState.broadcast (UserLoggedIn u)
+    initializeClient :: Id User -> Action (Id Client)
+    initializeClient uId = do
+      readState >>= ServerState.broadcast (UserLoggedIn uId)
       cId <- liftIO Id.make
       conn <- readConn
-      modifyState $ pure . ServerState.addClient (Client cId (User.id u) conn)
+      modifyState $ pure . ServerState.addClient (Client cId uId conn)
       ss <- readState
-      mapM_ (`ServerState.sendMessage` ss) =<< runIO (Db.listUnreceivedMessages (User.id u) <$> readMessages)
+      mapM_ (`ServerState.sendMessage` ss) =<< runIO (Db.listUnreceivedMessages uId <$> readMessages)
       pure cId
 
-talk :: User -> Id Client -> Action ()
-talk u cId = loop $
-  readConn >>= receiveClientMsg >>= handleClientMsg u
+talk :: Id User -> Id Client -> Action ()
+talk uId cId = loop $
+  readConn >>= receiveClientMsg >>= handleClientMsg uId
   where
     loop :: Action () -> Action ()
     loop a = forever (runNestedAction a) `finally` disconnect
@@ -65,17 +65,24 @@ talk u cId = loop $
     disconnect :: Action ()
     disconnect = do
       modifyState $ pure . ServerState.removeClient cId
-      readState >>= ServerState.broadcast (UserLoggedOut u)
+      readState >>= ServerState.broadcast (UserLoggedOut uId)
 
-handleClientMsg :: User -> ClientMsg -> Action ()
+handleClientMsg :: Id User -> ClientMsg -> Action ()
 handleClientMsg _ (Login _ _) = failWith (BadRequest "already logged in")
-handleClientMsg u (Send t recId) = do
+
+handleClientMsg uId (RenameUser un) = do
+  u' <- whenNothingM
+    (runIO $ Db.updateUserName un uId <$> readUsers)
+    (error "current user missing in database")
+  ServerState.broadcast (UserNameChanged u') =<< readState
+
+handleClientMsg uId (Send t recId) = do
   msgId <- liftIO Id.make
   now   <- liftIO Time.getCurrentTime
   let msg = Message {
        Message.id         = msgId
      , Message.text       = t
-     , Message.senderId   = User.id u
+     , Message.senderId   = uId
      , Message.receiverId = recId
      , Message.sentAt     = now
      , Message.receivedAt = Nothing
@@ -85,18 +92,18 @@ handleClientMsg u (Send t recId) = do
   ServerState.sendMessage msg =<< readState
   send (Sent msg)
 
-handleClientMsg u (Received msgId) = do
+handleClientMsg uId (Received msgId) = do
   now <- liftIO Time.getCurrentTime
   unlessM
-    (runIO $ Db.updateMessageReceivedAt now (User.id u) msgId <$> readMessages)
+    (runIO $ Db.updateMessageReceivedAt now uId msgId <$> readMessages)
     (failWith $ MessageNotFound msgId)
 
-handleClientMsg u (Read msgId) = do
+handleClientMsg uId (Read msgId) = do
   now <- liftIO Time.getCurrentTime
   unlessM
-    (runIO $ Db.updateMessageReadAt now (User.id u) msgId <$> readMessages)
+    (runIO $ Db.updateMessageReadAt now uId msgId <$> readMessages)
     (failWith $ MessageNotFound msgId)
-    
+
 handleClientMsg _ LoadUsers = do
   us <- runIO $ Db.list <$> readUsers
   is <- mapM makeItem us
@@ -105,7 +112,7 @@ handleClientMsg _ LoadUsers = do
     makeItem :: User -> Action UserItem
     makeItem u = readState >>= \s -> pure (u, ServerState.isOnline (User.id u) s)
 
-handleClientMsg u LoadChats = do
+handleClientMsg uId LoadChats = do
   ms <- runIO $ Db.list <$> readUsers
   is <- mapM loadChat ms <&> catMaybes
   send (ChatsLoaded is)
@@ -114,14 +121,14 @@ handleClientMsg u LoadChats = do
     loadChat u2 = do
       msgs <- readMessages
       liftIO $ do
-        mm <- Db.findLatestChatMessage (User.id u) (User.id u2) msgs
-        nt <- Db.countTotalChatMessages (User.id u) (User.id u2) msgs
-        nu <- Db.countUnreadChatMessages (User.id u2) (User.id u) msgs
+        mm <- Db.findLatestChatMessage uId (User.id u2) msgs
+        nt <- Db.countTotalChatMessages uId (User.id u2) msgs
+        nu <- Db.countUnreadChatMessages (User.id u2) uId msgs
         pure $ mm <&> (u2, , nt, nu)
-      
 
-handleClientMsg u (LoadChat uId) = do
-  is <- runIO $ Db.listChatMessages uId (User.id u) <$> readMessages
+
+handleClientMsg uId (LoadChat uId2) = do
+  is <- runIO $ Db.listChatMessages uId uId2 <$> readMessages
   send (ChatLoaded is)
 
 handleClientMsg _ (Unprotected um) = handleUnprotectedClientMsg um
@@ -134,17 +141,17 @@ handleUnprotectedClientMsg (CreateUser un pw) = do
   u <- liftIO $ User.make un pw'
   runIO $ Db.save u <$> readUsers
   ServerState.broadcast (UserCreated u) =<< readState
-  pure () 
+  pure ()
   where
     isDuplicate :: Action Bool
     isDuplicate = runIO $ Db.existsUserByName un <$> readUsers
 
-login :: Text -> Text -> Action User
+login :: Text -> Text -> Action (Id User)
 login un pw = do
   u <- runIO (Db.findUserByName un <$> readUsers) & (`whenNothingM` (failWith $ LoginFailed un))
   unless (User.isPassword pw u) (failWith $ LoginFailed un)
   send (LoginSucceeded u)
-  pure u
+  pure (User.id u)
 
 readUsers :: Action (Db.Repo User)
 readUsers = readState <&> ServerState.users

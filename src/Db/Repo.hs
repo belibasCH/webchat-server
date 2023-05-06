@@ -8,6 +8,7 @@ module Db.Repo
   , find
   , findUserByName
   , existsUserByName
+  , updateUserName
   , listChatMessages
   , listUnreceivedMessages
   , findLatestChatMessage
@@ -58,6 +59,15 @@ existsUserByName un (Repo col conn) = Db.run conn $ do
 
 userByNameQuery :: Text -> Mongo.Collection -> Mongo.Query
 userByNameQuery un = Mongo.select ["name" =: Mongo.Regex ("\\Q" <> un <> "\\E") "i"]
+
+updateUserName :: Text -> Id User -> Repo User -> IO (Maybe User)
+updateUserName un uId (Repo col conn) =  Db.run conn $ do
+  doc <- Mongo.findAndModify
+    (Mongo.select ["_id" =: uId] col)
+    ["$set" =: ["name" =: un]]
+  pure $ case doc of
+    Left _ -> Nothing
+    Right u -> Just (Db.read u)
 
 listChatMessages :: Id User -> Id User -> Repo Message -> IO [Message]
 listChatMessages uId1 uId2 (Repo col conn) = Db.run conn $ do

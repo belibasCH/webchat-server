@@ -26,7 +26,8 @@ data ClientMsg
   | LoadUsers
   | LoadChats
   | LoadChat (Id User)
-  
+  | RenameUser Text
+    
   -- | Attempt to authenticate with the given username and password.
   -- | This message is only usable when the current connection is not yet logged in.
   -- 
@@ -44,14 +45,15 @@ instance FromJSON ClientMsg where
   parseJSON = Json.withObject "Msg" $ \o -> do
     msgType <- o .: "type" :: Json.Parser Text
     case msgType of
-      "login" -> Login <$> o .: "username" <*> o .: "password"
-      "create_user" -> Unprotected <$> (CreateUser <$> o .: "username" <*> o .: "password")
       "send" -> Send <$> o .: "text" <*> o .: "receiver_id"
       "received" -> Received <$> o .: "message_id"
       "read" -> Read <$> o .: "message_id"
       "load_users" -> pure LoadUsers
       "load_chats" -> pure LoadChats
       "load_chat" -> LoadChat <$> o .: "user_id"
+      "login" -> Login <$> o .: "username" <*> o .: "password"
+      "rename_user" -> RenameUser <$> o .: "username"
+      "create_user" -> Unprotected <$> (CreateUser <$> o .: "username" <*> o .: "password")
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")
 
 receiveClientMsg :: WS.Connection -> Action ClientMsg
