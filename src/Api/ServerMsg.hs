@@ -107,7 +107,7 @@ instance ToJSON ServerMsg where
   toJSON (ChatsLoaded is) = Json.object
     [ "type" .= ("chats_loaded" :: Text)
     , "chats" .= toJSONList (is <&> \(u, msg, nt, nu) -> Json.object
-      [ "user_id" .= User.id u
+      [ "user" .= Json.object (jsonUser u)
       , "latest_message" .= Json.object (jsonMessage msg)
       , "total_message_count" .= nt
       , "unread_message_count" .= nu

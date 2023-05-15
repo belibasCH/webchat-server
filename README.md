@@ -463,7 +463,7 @@ Sent to a client after it has sent a [`load_chats`](#load_chats) request.
        
     "chats": [{
         // The other user with which this chat is shared.
-    	"user_id": UUID,
+    	"user": User,
         
         // The latest message exchanged in this chat.
         // May be either from either of the two users participating in this chat.
@@ -593,7 +593,7 @@ A user account, able to send and receive messages.
 
 A chat message, sent from one user to another.
 
-```json
+```js
 {
     // The message's id.
     "id": UUID,
