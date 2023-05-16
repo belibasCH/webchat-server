@@ -44,7 +44,9 @@ application fs pending = do
     talkUnauthorized :: Action ()
     talkUnauthorized =
       readConn >>= receiveClientMsg >>= \case
-        Login un pw -> login un pw >>= \uId -> initializeClient uId >>= talk uId
+        Login un pw -> do
+          runNestedAction (login un pw >>= \uId -> initializeClient uId >>= talk uId)
+          talkUnauthorized
         Unprotected um -> do
           runNestedAction (handleUnprotectedClientMsg um)
           talkUnauthorized
