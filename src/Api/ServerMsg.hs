@@ -82,9 +82,10 @@ instance ToJSON ServerMsg where
     , "message" .= Json.object (jsonMessage msg)
     ]
 
-  toJSON (Receive msg) = Json.object $
-    ( "type" .= ("receive_message" :: Text)
-    ) : jsonMessage msg
+  toJSON (Receive msg) = Json.object
+      [ "type"    .= ("receive_message" :: Text)
+      , "message" .= Json.object (jsonMessage msg)
+      ]
 
   toJSON (MessageReceived msg) = Json.object
     [ "type" .= ("message_received" :: Text)
