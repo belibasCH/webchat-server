@@ -95,6 +95,14 @@ handleClientMsg uId (ChangePassword pw) = do
     (error "current user missing in database")
   send PasswordChanged
 
+
+handleClientMsg uId (ChangeAvatar av) = do
+  let av' = if Text.null av then Nothing else Just av
+  u' <- whenNothingM
+    (runIO $ Db.updateUserAvatar av' uId <$> readUsers)
+    (error "current user missing in database")
+  ServerState.broadcast (AvatarChanged u') =<< readState
+
 handleClientMsg uId DeleteUser = do
   unlessM
     (runIO $ Db.delete uId <$> readUsers)

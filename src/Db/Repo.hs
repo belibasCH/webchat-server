@@ -12,6 +12,7 @@ module Db.Repo
   , existsUserByName
   , updateUserName
   , updateUserPassword
+  , updateUserAvatar
   , listChatMessages
   , listUnreceivedMessages
   , findLatestChatMessage
@@ -87,12 +88,20 @@ updateUserName un uId (Repo col conn) =  Db.run conn $ do
     Left _ -> Nothing
     Right u -> Just (Db.read u)
 
-
 updateUserPassword :: Text -> Id User -> Repo User -> IO (Maybe User)
 updateUserPassword pw uId (Repo col conn) =  Db.run conn $ do
   doc <- Mongo.findAndModify
     (Mongo.select ["_id" =: uId] col)
     ["$set" =: ["password" =: pw]]
+  pure $ case doc of
+    Left _ -> Nothing
+    Right u -> Just (Db.read u)
+
+updateUserAvatar :: Maybe Text -> Id User -> Repo User -> IO (Maybe User)
+updateUserAvatar av uId (Repo col conn) =  Db.run conn $ do
+  doc <- Mongo.findAndModify
+    (Mongo.select ["_id" =: uId] col)
+    ["$set" =: ["avatar" =: av]]
   pure $ case doc of
     Left _ -> Nothing
     Right u -> Just (Db.read u)

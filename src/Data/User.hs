@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Data.User
-  ( User (User, id, name)
+  ( User (User, id, name, avatar)
   , make
   , isPassword
   )
@@ -19,10 +19,11 @@ data User = User
   { id :: Id User
   , name :: Text
   , password :: Text
+  , avatar :: Maybe Text
   } deriving (Show)
 
 new :: Text -> Text -> Id User -> User
-new n p i = User { Data.User.id = i, name = n, password = p }
+new n p i = User { Data.User.id = i, name = n, password = p, avatar = Nothing }
 
 make :: Text -> Text -> IO User
 make n p = new n p <$> Id.make
@@ -35,15 +36,17 @@ instance Db.Write User where
     [ "_id"      =: Data.User.id u
     , "name"     =: name u
     , "password" =: password u
+    , "avatar"   =: avatar u
     ]
 
   writeId u = id u
 
 instance Db.Read User where
   read doc = User
-    { Data.User.id = at "_id" doc
-    , name = at "name" doc
+    { id       = at "_id" doc
+    , name     = at "name" doc
     , password = at "password" doc
+    , avatar   = at "avatar" doc
     }
 
   order d _ = ["name" =: Db.asc * d]

@@ -102,6 +102,27 @@ Changes the name of the authenticated user.
 * [`username_taken`](#username_taken), if there's already a user with the specified name (case-insensitive!).
 * [`bad_request`](#bad_request), if the connection is not authenticated.
 
+#### `change_avatar`
+
+Changes the avatar of the authenticated user.
+
+```json
+{
+    "type": "change_avatar",
+    
+    // The new avatar.
+    "avatar": String
+}
+```
+
+**Broadcasts**
+
+* [`avatar_changed`](#avatar_changed)
+
+**Errors**
+
+* [`bad_request`](#bad_request), if the connection is not authenticated.
+
 #### `change_password`
 
 Changes the password of the authenticated user.
@@ -372,6 +393,19 @@ Broadcast to every authorized client when a user changes its name.
 }
 ```
 
+#### `avatar_changed`
+
+Broadcast to every authorized client when a user changes its avatar.
+
+```json
+{
+    "type": "avatar_changed",
+    
+    // The user that changed its avatar.
+    "user": User
+}
+```
+
 #### `password_changed`
 
 Sent back to a client when it successfully changed its user's password.
@@ -410,7 +444,7 @@ Sent to a user when one of its clients [sent a message](#send) to another user.
 
 #### `receive_message`
 
-Sent to a user when a message is [sent_to_it](#send).
+Sent to a user when a message is [sent to it](#send).
 This message will be repeated every time the user logs in, until it gets marked as [`received`](#received).
 
 ```json
