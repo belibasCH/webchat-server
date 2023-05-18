@@ -22,11 +22,11 @@ data User = User
   , avatar :: Maybe Text
   } deriving (Show)
 
-new :: Text -> Text -> Id User -> User
-new n p i = User { Data.User.id = i, name = n, password = p, avatar = Nothing }
+new :: Maybe Text -> Text -> Text -> Id User -> User
+new av un pw i = User { Data.User.id = i, name = un, password = pw, avatar = av }
 
-make :: Text -> Text -> IO User
-make n p = new n p <$> Id.make
+make :: Maybe Text -> Text -> Text -> IO User
+make av un pw = new av un pw <$> Id.make
 
 isPassword :: Text -> User -> Bool
 isPassword t u = t == password u

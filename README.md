@@ -67,7 +67,10 @@ Creates a new user account.
     "username": String,
     
     // The new user's password.
-    "password": String
+    "password": String,
+    
+    // The new user's avatar.
+    "avatar": String | null
 }
 ```
 
@@ -102,23 +105,6 @@ Changes the name of the authenticated user.
 * [`username_taken`](#username_taken), if there's already a user with the specified name (case-insensitive!).
 * [`bad_request`](#bad_request), if the connection is not authenticated.
 
-#### `change_avatar`
-
-Changes the avatar of the authenticated user.
-
-```json
-{
-    "type": "change_avatar",
-    
-    // The new avatar.
-    "avatar": String
-}
-```
-
-**Broadcasts**
-
-* [`avatar_changed`](#avatar_changed)
-
 **Errors**
 
 * [`bad_request`](#bad_request), if the connection is not authenticated.
@@ -144,6 +130,23 @@ Changes the password of the authenticated user.
 
 * [`blank_password`](#blank_password), if the specified password is blank.
 * [`bad_request`](#bad_request), if the connection is not authenticated.
+
+#### `change_avatar`
+
+Changes the avatar of the authenticated user.
+
+```json
+{
+    "type": "change_avatar",
+    
+    // The new avatar.
+    "avatar": String | null
+}
+```
+
+**Broadcasts**
+
+* [`avatar_changed`](#avatar_changed)
 
 #### `delete_user`
 
@@ -393,6 +396,16 @@ Broadcast to every authorized client when a user changes its name.
 }
 ```
 
+#### `password_changed`
+
+Sent back to a client when it successfully changed its user's password.
+
+```json
+{
+    "type": "password_changed"
+}
+```
+
 #### `avatar_changed`
 
 Broadcast to every authorized client when a user changes its avatar.
@@ -403,16 +416,6 @@ Broadcast to every authorized client when a user changes its avatar.
     
     // The user that changed its avatar.
     "user": User
-}
-```
-
-#### `password_changed`
-
-Sent back to a client when it successfully changed its user's password.
-
-```json
-{
-    "type": "password_changed"
 }
 ```
 
@@ -619,7 +622,10 @@ A user account, able to send and receive messages.
     "id": UUID,
     
     // The user's unique name.
-    "name": String
+    "name": String,
+    
+    // The user's avatar.
+    "avatar": String
 }
 ```
 

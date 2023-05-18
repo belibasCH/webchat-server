@@ -95,10 +95,9 @@ handleClientMsg uId (ChangePassword pw) = do
     (error "current user missing in database")
   send PasswordChanged
 
-
 handleClientMsg uId (ChangeAvatar av) = do
-  let av' = if Text.null av then Nothing else Just av
-  u' <- whenNothingM
+  av' <- requireValidAvatar av
+  u'  <- whenNothingM
     (runIO $ Db.updateUserAvatar av' uId <$> readUsers)
     (error "current user missing in database")
   ServerState.broadcast (AvatarChanged u') =<< readState
@@ -180,10 +179,11 @@ handleClientMsg uId (LoadChat uId2) = do
 handleClientMsg _ (Unprotected um) = handleUnprotectedClientMsg um
 
 handleUnprotectedClientMsg :: UnprotectedClientMsg -> Action ()
-handleUnprotectedClientMsg (CreateUser un pw) = do
+handleUnprotectedClientMsg (CreateUser un pw av) = do
   un' <- requireValidUsername un
   pw' <- requireValidPassword pw
-  u <- liftIO $ User.make un' pw'
+  av' <- requireValidAvatar av
+  u <- liftIO $ User.make av' un' pw'
   runIO $ Db.save u <$> readUsers
   send (UserCreated u)
   ServerState.broadcast (UserCreated u) =<< readState
@@ -202,6 +202,11 @@ requireValidPassword pw = do
   let pw' = Text.strip pw
   when (Text.null pw') $ failWith BlankPassword
   pure pw'
+
+requireValidAvatar :: Maybe Text -> Action (Maybe Text)
+requireValidAvatar mav = pure $ mav >>= \av -> do
+  let av' = Text.strip av
+  if Text.null av' then Nothing else Just av'
 
 login :: Text -> Text -> Action (Id User)
 login un pw = do

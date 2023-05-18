@@ -130,6 +130,7 @@ jsonUser :: User -> [(Json.Key, Json.Value)]
 jsonUser u =
   [ "id" .= User.id u
   , "name" .= User.name u
+  , "avatar" .= User.avatar u
   ]
 
 jsonMessage :: Message -> [(Json.Key, Json.Value)]

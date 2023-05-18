@@ -28,7 +28,7 @@ data ClientMsg
   | LoadChat (Id User)
   | ChangeUsername Text
   | ChangePassword Text
-  | ChangeAvatar Text
+  | ChangeAvatar (Maybe Text)
   | DeleteUser
     
   -- | Attempt to authenticate with the given username and password.
@@ -41,7 +41,7 @@ data ClientMsg
   deriving (Show)
 
 data UnprotectedClientMsg
-  = CreateUser Text Text
+  = CreateUser Text Text (Maybe Text)
   deriving (Show)
 
 instance FromJSON ClientMsg where
@@ -59,7 +59,7 @@ instance FromJSON ClientMsg where
       "change_password" -> ChangePassword <$> o .: "password"
       "change_avatar" -> ChangeAvatar <$> o .: "avatar"
       "delete_user" -> pure DeleteUser
-      "create_user" -> Unprotected <$> (CreateUser <$> o .: "username" <*> o .: "password")
+      "create_user" -> Unprotected <$> (CreateUser <$> o .: "username" <*> o .: "password" <*> o .: "avatar")
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")
 
 receiveClientMsg :: WS.Connection -> Action ClientMsg
