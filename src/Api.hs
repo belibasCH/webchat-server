@@ -88,10 +88,10 @@ handleClientMsg uId (ChangeUsername un) = do
     (error "current user missing in database")
   ServerState.broadcast (UsernameChanged u') =<< readState
 
-handleClientMsg uId (ChangePassword pw) = do
+handleClientMsg uId (ChangePassword pw sk mk) = do
   pw' <- requireValidPassword pw
   _   <- whenNothingM
-    (runIO $ Db.updateUserPassword pw' uId <$> readUsers)
+    (runIO $ Db.updateUserPassword pw' sk mk uId <$> readUsers)
     (error "current user missing in database")
   send PasswordChanged
 
@@ -110,13 +110,14 @@ handleClientMsg uId DeleteUser = do
   ServerState.broadcast (UserDeleted uId) =<< readState
   liftIO $ throwIO (WS.CloseRequest 1000 "user deleted")
 
-handleClientMsg uId (Send t recId) = do
+handleClientMsg uId (Send t mk recId) = do
   unlessM receiverExists $ failWith (UserNotFound recId)
   msgId <- liftIO Id.make
   now   <- liftIO Time.getCurrentTime
   let msg = Message {
        Message.id         = msgId
      , Message.text       = t
+     , Message.key        = mk
      , Message.senderId   = uId
      , Message.receiverId = recId
      , Message.sentAt     = now
@@ -179,11 +180,11 @@ handleClientMsg uId (LoadChat uId2) = do
 handleClientMsg _ (Unprotected um) = handleUnprotectedClientMsg um
 
 handleUnprotectedClientMsg :: UnprotectedClientMsg -> Action ()
-handleUnprotectedClientMsg (CreateUser un pw av) = do
+handleUnprotectedClientMsg (CreateUser un pw av pk sk mk) = do
   un' <- requireValidUsername un
   pw' <- requireValidPassword pw
   av' <- requireValidAvatar av
-  u <- liftIO $ User.make av' un' pw'
+  u <- liftIO $ User.make av' un' pw' pk sk mk
   runIO $ Db.save u <$> readUsers
   send (UserCreated u)
   ServerState.broadcast (UserCreated u) =<< readState

@@ -30,7 +30,7 @@ import Data.Id (Id)
 import Data.Message (Message)
 import Data.Text (Text)
 import Data.Time (UTCTime)
-import Data.User (User)
+import Data.User (User, Username, Password, Avatar, PrivateKey, MessageKey)
 import Database.MongoDB ((=:))
 import qualified Database.MongoDB as Mongo
 import qualified Db.Conn as Db
@@ -66,20 +66,20 @@ delete aId (Repo col conn) = Db.run conn $ do
       Mongo.deleteOne (Mongo.select ["_id" =: aId] col)
       pure True
 
-findUserByName :: Text -> Repo User -> IO (Maybe User)
+findUserByName :: Username -> Repo User -> IO (Maybe User)
 findUserByName un (Repo col conn) = Db.run conn $ do
   doc <- Mongo.findOne (userByNameQuery un col)
   pure $ doc <&> Db.read
 
-existsUserByName :: Text -> Repo User -> IO Bool
+existsUserByName :: Username -> Repo User -> IO Bool
 existsUserByName un (Repo col conn) = Db.run conn $ do
   isEmpty <- Mongo.findCommand (userByNameQuery un col) { Mongo.limit = 1 } >>= Mongo.isCursorClosed
   pure $ not isEmpty
 
-userByNameQuery :: Text -> Mongo.Collection -> Mongo.Query
+userByNameQuery :: Username -> Mongo.Collection -> Mongo.Query
 userByNameQuery un = Mongo.select ["name" =: Mongo.Regex ("\\Q" <> un <> "\\E") "i"]
 
-updateUserName :: Text -> Id User -> Repo User -> IO (Maybe User)
+updateUserName :: Username -> Id User -> Repo User -> IO (Maybe User)
 updateUserName un uId (Repo col conn) =  Db.run conn $ do
   doc <- Mongo.findAndModify
     (Mongo.select ["_id" =: uId] col)
@@ -88,16 +88,16 @@ updateUserName un uId (Repo col conn) =  Db.run conn $ do
     Left _ -> Nothing
     Right u -> Just (Db.read u)
 
-updateUserPassword :: Text -> Id User -> Repo User -> IO (Maybe User)
-updateUserPassword pw uId (Repo col conn) =  Db.run conn $ do
+updateUserPassword :: Password -> PrivateKey -> MessageKey -> Id User -> Repo User -> IO (Maybe User)
+updateUserPassword pw sk mk uId (Repo col conn) =  Db.run conn $ do
   doc <- Mongo.findAndModify
     (Mongo.select ["_id" =: uId] col)
-    ["$set" =: ["password" =: pw]]
+    ["$set" =: ["password" =: pw, "private_key" =: sk, "message_key" =: mk]]
   pure $ case doc of
     Left _ -> Nothing
     Right u -> Just (Db.read u)
 
-updateUserAvatar :: Maybe Text -> Id User -> Repo User -> IO (Maybe User)
+updateUserAvatar :: Maybe Avatar -> Id User -> Repo User -> IO (Maybe User)
 updateUserAvatar av uId (Repo col conn) =  Db.run conn $ do
   doc <- Mongo.findAndModify
     (Mongo.select ["_id" =: uId] col)

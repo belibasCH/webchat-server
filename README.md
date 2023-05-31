@@ -66,11 +66,20 @@ Creates a new user account.
     // The new user's name.
     "username": String,
     
-    // The new user's password.
+    // The new user's encrypted password.
     "password": String,
     
     // The new user's avatar.
-    "avatar": String | null
+    "avatar": String | null,
+    
+    // The new user's public key.
+    "public_Key": String,
+    
+    // The new user's encrypted private key.
+    "private_key": String,
+    
+    // The new user's encrypted message key.
+    "message_key": String,
 }
 ```
 
@@ -111,14 +120,20 @@ Changes the name of the authenticated user.
 
 #### `change_password`
 
-Changes the password of the authenticated user.
+Changes the authentication details of the authenticated user.
 
 ```json
 {
     "type": "change_password",
     
     // The new password.
-    "password": String
+    "password": String,
+    
+    // The new encrypted private key.
+    "private_key": String,
+    
+    // The new encrypted message key.
+    "message_key": String,
 }
 ```
 
@@ -207,7 +222,10 @@ Sends a chat message to another user.
     "receiver_id": UUID,
     
     // The encrypted text message.
-    "text": String
+    "text": String,
+    
+    // The message key, encrypted using the receiver's public key.
+    "key": String,
 }
 ```
 
@@ -338,7 +356,13 @@ After receiving this, the connection can be regarded as authenticated.
     "type": "login_succeeded",
     
     // The authenticated user.
-    "user": User
+    "user": User,
+    
+    // The user's encrypted private key.
+    "private_key": String,
+    
+    // The user's encrypted message key.
+    "message_key": String,
 }
 ```
 
@@ -625,7 +649,10 @@ A user account, able to send and receive messages.
     "name": String,
     
     // The user's avatar.
-    "avatar": String
+    "avatar": String,
+    
+    // The user's public encryption key.
+    "public_key": String
 }
 ```
 
@@ -637,6 +664,13 @@ A chat message, sent from one user to another.
 {
     // The message's id.
     "id": UUID,
+    
+    // The key with which the message's text has been encrypted.
+    // This key itself is encrypted using the receiver's public key.
+    //
+	// Note that the key will most likely be stable across a range of messages
+    // and does only need to be decrypted when its encrypted value changes.
+	"key": String,
 
     // The id of the user that sent the message.
     "sender_id": UUID,

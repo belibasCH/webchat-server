@@ -47,6 +47,8 @@ instance ToJSON ServerMsg where
   toJSON (LoginSucceeded u) = Json.object
     [ "type" .= ("login_succeeded" :: Text)
     , "user" .= Json.object (jsonUser u)
+    , "private_key" .= User.private_key u
+    , "message_key" .= User.message_key u
     ]
 
   toJSON (UserLoggedIn uId) = Json.object
@@ -131,11 +133,13 @@ jsonUser u =
   [ "id" .= User.id u
   , "name" .= User.name u
   , "avatar" .= User.avatar u
+  , "public_key" .= User.public_key u
   ]
 
 jsonMessage :: Message -> [(Json.Key, Json.Value)]
 jsonMessage msg =
   [ "id" .= Message.id msg
+  , "key" .= Message.key msg
   , "sender_id" .= Message.senderId msg
   , "receiver_id" .= Message.receiverId msg
   , "text" .= Message.text msg

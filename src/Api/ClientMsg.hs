@@ -13,22 +13,22 @@ import Data.Id (Id)
 import Data.Message (Message)
 import Data.Text (Text)
 import Data.Text.Encoding as TE
-import Data.User (User)
+import Data.User (User, Username, Password, Avatar, PublicKey, PrivateKey, MessageKey)
 import qualified Data.Aeson as Json
 import qualified Data.Aeson.Types as Json
 import qualified Data.Text as T
 import qualified Network.WebSockets as WS
 
 data ClientMsg
-  = Send Text (Id User)
+  = Send Text MessageKey (Id User)
   | Received (Id Message)
   | Read (Id Message)
   | LoadUsers
   | LoadChats
   | LoadChat (Id User)
-  | ChangeUsername Text
-  | ChangePassword Text
-  | ChangeAvatar (Maybe Text)
+  | ChangeUsername Username
+  | ChangePassword Password PrivateKey MessageKey
+  | ChangeAvatar (Maybe Avatar)
   | DeleteUser
     
   -- | Attempt to authenticate with the given username and password.
@@ -41,14 +41,14 @@ data ClientMsg
   deriving (Show)
 
 data UnprotectedClientMsg
-  = CreateUser Text Text (Maybe Text)
+  = CreateUser Username Password (Maybe Avatar) PublicKey PrivateKey MessageKey
   deriving (Show)
 
 instance FromJSON ClientMsg where
   parseJSON = Json.withObject "Msg" $ \o -> do
     msgType <- o .: "type" :: Json.Parser Text
     case msgType of
-      "send" -> Send <$> o .: "text" <*> o .: "receiver_id"
+      "send" -> Send <$> o .: "text" <*> o .: "key" <*> o .: "receiver_id"
       "received" -> Received <$> o .: "message_id"
       "read" -> Read <$> o .: "message_id"
       "load_users" -> pure LoadUsers
@@ -56,10 +56,17 @@ instance FromJSON ClientMsg where
       "load_chat" -> LoadChat <$> o .: "user_id"
       "login" -> Login <$> o .: "username" <*> o .: "password"
       "change_username" -> ChangeUsername <$> o .: "username"
-      "change_password" -> ChangePassword <$> o .: "password"
+      "change_password" -> ChangePassword <$> o .: "password" <*> o .: "private_key" <*> o .: "message_key"
       "change_avatar" -> ChangeAvatar <$> o .: "avatar"
       "delete_user" -> pure DeleteUser
-      "create_user" -> Unprotected <$> (CreateUser <$> o .: "username" <*> o .: "password" <*> o .: "avatar")
+      "create_user" -> Unprotected <$> (CreateUser
+        <$> o .: "username"
+        <*> o .: "password"
+        <*> o .: "avatar"
+        <*> o .: "public_key"
+        <*> o .: "private_key"
+        <*> o .: "message_key"
+        )
       t -> Json.parserThrowError [] ("invalid message type '" ++ T.unpack t ++ "'")
 
 receiveClientMsg :: WS.Connection -> Action ClientMsg

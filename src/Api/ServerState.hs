@@ -28,8 +28,6 @@ import qualified Db.Conn as Db
 import qualified Db.Repo as Db
 import qualified Network.WebSockets as WS
 
--- TODO close db
-
 make :: IO ServerState
 make = do
   db <- Db.connect
